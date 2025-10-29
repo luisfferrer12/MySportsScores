@@ -1,0 +1,113 @@
+{
+  "project_info": {
+    "project_number": "942001619108",
+    "project_id": "fermundev-425ae",
+    "storage_bucket": "fermundev-425ae.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:942001619108:android:9fcc8cd01ee63dbaa26631",
+        "android_client_info": {
+          "package_name": "com.fermundev.AppSportsScore"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "942001619108-phmstamkqce7ihmt3r5aveb41majdekd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fermundev.AppSportsScore",
+            "certificate_hash": "5ac7d8f4af4de0965901335ddf154138b28a0305"
+          }
+        },
+        {
+          "client_id": "942001619108-7mmb47kmil156tnqf3ke2l9skspe6vcv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAI0KhxiIWu4jG_-_Yy7vW3Lo4DQu6-6pY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "942001619108-7mmb47kmil156tnqf3ke2l9skspe6vcv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:942001619108:android:4c2625a0aac00b1da26631",
+        "android_client_info": {
+          "package_name": "com.fermundev.apppicoyplaca"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "942001619108-cvtm3j4pao13ui2u3bs3pm7f457n75mo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fermundev.apppicoyplaca",
+            "certificate_hash": "89783a82d1f5cf9e6006eda8a89345df6f5d49f7"
+          }
+        },
+        {
+          "client_id": "942001619108-7mmb47kmil156tnqf3ke2l9skspe6vcv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAI0KhxiIWu4jG_-_Yy7vW3Lo4DQu6-6pY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "942001619108-7mmb47kmil156tnqf3ke2l9skspe6vcv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:942001619108:android:bc108e54f50323eea26631",
+        "android_client_info": {
+          "package_name": "com.fermundev.mysportsscores"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "942001619108-7mmb47kmil156tnqf3ke2l9skspe6vcv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAI0KhxiIWu4jG_-_Yy7vW3Lo4DQu6-6pY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "942001619108-7mmb47kmil156tnqf3ke2l9skspe6vcv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
