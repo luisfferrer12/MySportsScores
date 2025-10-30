@@ -1,5 +1,6 @@
 package com.fermundev.mysportsscores
 
+import android.content.Context
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -15,9 +16,11 @@ import androidx.navigation.ui.setupWithNavController
 import androidx.appcompat.app.AppCompatActivity
 import com.fermundev.mysportsscores.databinding.ActivityHomeBinding
 import com.google.firebase.auth.FirebaseAuth
+import androidx.core.content.edit
 
 enum class ProviderType{
-    BASIC
+    BASIC,
+    GOOGLE
 }
 
 class HomeActivity : AppCompatActivity() {
@@ -36,6 +39,10 @@ class HomeActivity : AppCompatActivity() {
         val provider = bundle?.getString("provider")
         //SetUp
         setUp(email ?:"", provider ?:"")
+
+        //Guardado de Sesión
+        saveSession(email, provider)
+
 
         binding.appBarHome.fab?.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
@@ -66,6 +73,16 @@ class HomeActivity : AppCompatActivity() {
             )
             setupActionBarWithNavController(navController, appBarConfiguration)
             it.setupWithNavController(navController)
+        }
+    }
+
+    private fun saveSession(email: String?, provider: String?) {
+        getSharedPreferences(
+            getString(R.string.prefs_file),
+            Context.MODE_PRIVATE
+        ).edit {
+            putString("email", email)
+            putString("provider", provider)
         }
     }
 
@@ -104,6 +121,13 @@ class HomeActivity : AppCompatActivity() {
                     .setPositiveButton("Cerrar") { _, _ ->
                         FirebaseAuth.getInstance().signOut()
                         onBackPressed()
+                        getSharedPreferences(getString(
+                            R.string.prefs_file),
+                            Context.MODE_PRIVATE)
+                            .edit{
+                                clear()
+                                apply()
+                            }
                     }
                     .setNegativeButton("Cancelar", null)
                     .show()

@@ -1,7 +1,9 @@
 package com.fermundev.mysportsscores
 
+import android.app.ComponentCaller
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import androidx.activity.enableEdgeToEdge
@@ -9,8 +11,14 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+
+private const val GOOGLE_SIGN_IN = 100
 
 class AuthActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,6 +39,25 @@ class AuthActivity : AppCompatActivity() {
 
         //SetUp
         setUp()
+        session()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val authLayout = findViewById<View>(R.id.authLayout)
+        authLayout.visibility = View.VISIBLE
+    }
+
+    private fun session() {
+        val prefs = getSharedPreferences(getString(R.string.prefs_file), MODE_PRIVATE)
+        val email = prefs.getString("email", null)
+        val provider = prefs.getString("provider", null)
+
+        if (email != null && provider != null) {
+            val authLayout = findViewById<View>(R.id.authLayout)
+            authLayout.visibility = View.INVISIBLE
+            showHome(email, ProviderType.valueOf(provider))
+        }
     }
 
     private fun setUp() {
@@ -96,7 +123,18 @@ class AuthActivity : AppCompatActivity() {
             }
         }
 
+        //Inicio de Sesión con Google
+        val googleButton: Button = findViewById(R.id.googleButton)
+        googleButton.setOnClickListener {
+            val googleConfig = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build()
 
+            val googleClient = GoogleSignIn.getClient(this, googleConfig)
+            googleClient.signOut()
+            startActivityForResult(googleClient.signInIntent, GOOGLE_SIGN_IN)
+        }
     }
 
     private fun emptyFieldsError() {
@@ -114,5 +152,41 @@ class AuthActivity : AppCompatActivity() {
             putExtra("provider", provider.name)
         }
         startActivity(homeIntent)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == GOOGLE_SIGN_IN) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+
+            try {
+                val account = task.getResult(ApiException::class.java)
+
+                if (account != null) {
+                    val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+                    FirebaseAuth.getInstance().signInWithCredential(credential)
+
+                    if (task.isSuccessful) {
+                        showHome(account.email ?: "", ProviderType.GOOGLE)
+                    } else {
+                        // Si el inicio de sesión falla, mostrar un mensaje al usuario.
+                        AlertDialog.Builder(this)
+                            .setTitle("Error")
+                            .setMessage("Error al ingresar con Google. Intenta de nuevo.")
+                            .setPositiveButton("Aceptar", null)
+                            .show()
+                    }
+                }
+            } catch (e: ApiException) {
+                AlertDialog.Builder(this)
+                    .setTitle("Error")
+                    .setMessage("Error al ingresar con Google. Intenta de nuevo.")
+                    .setPositiveButton("Aceptar", null)
+                    .show()
+            }
+
+
+        }
     }
 }

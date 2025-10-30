@@ -16,6 +16,7 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
+            android:id="@+id/authLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -30,7 +31,7 @@
             <EditText
                 android:id="@+id/emailEditText"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:ems="10"
                 android:hint="E-mail"
                 android:inputType="textEmailAddress" />
@@ -42,7 +43,7 @@
             <EditText
                 android:id="@+id/passwordEditText"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:ems="10"
                 android:hint="Contraseña"
                 android:inputType="textPassword" />
@@ -79,12 +80,14 @@
             </LinearLayout>
 
             <Button
-                android:id="@+id/button3"
+                android:id="@+id/googleButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:backgroundTint="@color/orange"
-                android:text="Button" />
+                android:drawableLeft="@drawable/common_google_signin_btn_icon_light"
+                android:text="Google"
+                android:textAlignment="viewStart" />
         </LinearLayout>
     </ScrollView>
 
