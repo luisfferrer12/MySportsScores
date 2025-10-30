@@ -2,7 +2,9 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.MySportsScores" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/orange</item>
+        <item name="colorPrimaryVariant">@color/dark_orange</item>
+        <item name="colorSecondaryContainer">@color/orange_smooth</item>
     </style>
 
     <style name="Theme.MySportsScores" parent="Base.Theme.MySportsScores" />
@@ -15,4 +17,11 @@
     <style name="Theme.MySportsScores.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
 
     <style name="Theme.MySportsScores.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+    <!-- Estilo manual para la imagen de perfil circular -->
+    <style name="ShapeAppearance.Material3.Circle" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
 </resources>
