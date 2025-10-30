@@ -1,13 +1,15 @@
 package com.fermundev.mysportsscores
 
-import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.Toast
+import androidx.activity.addCallback
 import androidx.appcompat.app.AlertDialog
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.navigation.NavigationView
-import androidx.navigation.findNavController
+import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
@@ -27,6 +29,8 @@ class HomeActivity : AppCompatActivity() {
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityHomeBinding
+    private lateinit var navController: NavController
+    private var backPressedTime: Long = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,12 +56,13 @@ class HomeActivity : AppCompatActivity() {
 
         val navHostFragment =
             (supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_home) as NavHostFragment?)!!
-        val navController = navHostFragment.navController
+        navController = navHostFragment.navController
 
+        // CORRECCIÓN: Se elimina nav_settings de las pantallas de nivel superior
         binding.navView?.let {
             appBarConfiguration = AppBarConfiguration(
                 setOf(
-                    R.id.nav_transform, R.id.nav_reflow, R.id.nav_slideshow, R.id.nav_settings
+                    R.id.nav_transform, R.id.nav_reflow, R.id.nav_slideshow
                 ),
                 binding.drawerLayout
             )
@@ -74,12 +79,29 @@ class HomeActivity : AppCompatActivity() {
             setupActionBarWithNavController(navController, appBarConfiguration)
             it.setupWithNavController(navController)
         }
+
+        // Lógica corregida para el botón "Atrás"
+        onBackPressedDispatcher.addCallback(this) {
+            // ¿Estamos en la pantalla de inicio del gráfico de navegación?
+            if (navController.currentDestination?.id == navController.graph.startDestinationId) {
+                // Sí: aplicar lógica de doble pulsación para salir
+                if (backPressedTime + 2000 > System.currentTimeMillis()) {
+                    finish()
+                } else {
+                    Toast.makeText(baseContext, "Presiona de nuevo para salir", Toast.LENGTH_SHORT).show()
+                }
+                backPressedTime = System.currentTimeMillis()
+            } else {
+                // No: navegar hacia atrás normalmente (ej. de Settings a Home)
+                navController.navigateUp()
+            }
+        }
     }
 
     private fun saveSession(email: String?, provider: String?) {
         getSharedPreferences(
             getString(R.string.prefs_file),
-            Context.MODE_PRIVATE
+            MODE_PRIVATE
         ).edit {
             putString("email", email)
             putString("provider", provider)
@@ -96,23 +118,18 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         val result = super.onCreateOptionsMenu(menu)
-        // Using findViewById because NavigationView exists in different layout files
-        // between w600dp and w1240dp
         val navView: NavigationView? = findViewById(R.id.nav_view)
         if (navView == null) {
-            // The navigation drawer already has the items including the items in the overflow menu
-            // We only inflate the overflow menu if the navigation drawer isn't visible
             menuInflater.inflate(R.menu.overflow, menu)
         }
         return result
     }
 
-    //Cerrar Sesión
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.nav_settings -> {
-                val navController = findNavController(R.id.nav_host_fragment_content_home)
                 navController.navigate(R.id.nav_settings)
+                return true
             }
             R.id.logOutButton -> {
                 AlertDialog.Builder(this)
@@ -120,14 +137,11 @@ class HomeActivity : AppCompatActivity() {
                     .setMessage("¿Seguro que deseas cerrar sesión?")
                     .setPositiveButton("Cerrar") { _, _ ->
                         FirebaseAuth.getInstance().signOut()
-                        onBackPressed()
-                        getSharedPreferences(getString(
-                            R.string.prefs_file),
-                            Context.MODE_PRIVATE)
-                            .edit{
-                                clear()
-                                apply()
-                            }
+                        val prefs = getSharedPreferences(getString(R.string.prefs_file), MODE_PRIVATE)
+                        prefs.edit { clear() }
+                        val intent = Intent(this, AuthActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        startActivity(intent)
                     }
                     .setNegativeButton("Cancelar", null)
                     .show()
@@ -138,7 +152,6 @@ class HomeActivity : AppCompatActivity() {
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.nav_host_fragment_content_home)
         return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
     }
 }
