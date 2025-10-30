@@ -12,8 +12,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MySportsScores">
         <activity
+            android:name=".HomeActivity"
+            android:exported="true"
+            android:label="@string/title_activity_home"
+            android:resizeableActivity="true"
+            android:theme="@style/Theme.MySportsScores.NoActionBar"
+            tools:targetApi="24">
+        </activity>
+        <activity
             android:name=".AuthActivity"
-            android:exported="true">
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
