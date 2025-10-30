@@ -1,6 +1,5 @@
 package com.fermundev.mysportsscores
 
-import android.app.ComponentCaller
 import android.content.Intent
 import android.os.Bundle
 import android.view.View

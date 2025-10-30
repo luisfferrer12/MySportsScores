@@ -1,13 +1,14 @@
 package com.fermundev.mysportsscores
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.appcompat.app.AlertDialog
-import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.navigation.NavigationView
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
@@ -31,6 +32,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
     private lateinit var navController: NavController
     private var backPressedTime: Long = 0
+    private var isFabMenuOpen = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,12 +49,8 @@ class HomeActivity : AppCompatActivity() {
         //Guardado de Sesión
         saveSession(email, provider)
 
-
-        binding.appBarHome.fab?.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null)
-                .setAnchorView(R.id.fab).show()
-        }
+        // Speed Dial FAB Logic
+        setupFabMenu()
 
         val navHostFragment =
             (supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_home) as NavHostFragment?)!!
@@ -98,6 +96,110 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupFabMenu() {
+        // Inicialmente los elementos están ocultos y no son clicables
+        closeFabMenu()
+
+        binding.appBarHome.fab?.setOnClickListener {
+            if (!isFabMenuOpen) {
+                showFabMenu()
+            } else {
+                closeFabMenu()
+            }
+        }
+
+        // Listeners para los mini-fabs
+        binding.appBarHome.fabNewGroup?.setOnClickListener {
+            Toast.makeText(this, "Crear nuevo Grupo", Toast.LENGTH_SHORT).show()
+            closeFabMenu()
+        }
+        binding.appBarHome.fabAddResult?.setOnClickListener {
+            Toast.makeText(this, "Agregar nuevo resultado", Toast.LENGTH_SHORT).show()
+            closeFabMenu()
+        }
+        binding.appBarHome.fabInviteFriend?.setOnClickListener {
+            Toast.makeText(this, "Invitar a un amigo", Toast.LENGTH_SHORT).show()
+            closeFabMenu()
+        }
+        binding.appBarHome.fabTakePhoto?.setOnClickListener {
+            Toast.makeText(this, "Tomar una foto", Toast.LENGTH_SHORT).show()
+            closeFabMenu()
+        }
+    }
+
+    private fun showFabMenu() {
+        isFabMenuOpen = true
+
+        // Hacer visibles y clicables los mini-fabs y etiquetas
+        binding.appBarHome.fabNewGroup?.visibility = View.VISIBLE
+        binding.appBarHome.fabAddResult?.visibility = View.VISIBLE
+        binding.appBarHome.fabInviteFriend?.visibility = View.VISIBLE
+        binding.appBarHome.fabTakePhoto?.visibility = View.VISIBLE
+        binding.appBarHome.labelNewGroup?.visibility = View.VISIBLE
+        binding.appBarHome.labelAddResult?.visibility = View.VISIBLE
+        binding.appBarHome.labelInviteFriend?.visibility = View.VISIBLE
+        binding.appBarHome.labelTakePhoto?.visibility = View.VISIBLE
+
+        binding.appBarHome.fabNewGroup?.isClickable = true
+        binding.appBarHome.fabAddResult?.isClickable = true
+        binding.appBarHome.fabInviteFriend?.isClickable = true
+        binding.appBarHome.fabTakePhoto?.isClickable = true
+
+        // Animar rotación del FAB principal
+        binding.appBarHome.fab?.animate()?.rotation(45f)
+
+        // Animar la aparición de los mini-fabs y etiquetas
+        binding.appBarHome.fabNewGroup?.animate()?.translationY(-resources.getDimension(R.dimen.standard_10))
+        binding.appBarHome.labelNewGroup?.animate()?.translationY(-resources.getDimension(R.dimen.standard_10))
+
+        binding.appBarHome.fabAddResult?.animate()?.translationY(-resources.getDimension(R.dimen.standard_20))
+        binding.appBarHome.labelAddResult?.animate()?.translationY(-resources.getDimension(R.dimen.standard_20))
+
+        binding.appBarHome.fabInviteFriend?.animate()?.translationY(-resources.getDimension(R.dimen.standard_30))
+        binding.appBarHome.labelInviteFriend?.animate()?.translationY(-resources.getDimension(R.dimen.standard_30))
+
+        binding.appBarHome.fabTakePhoto?.animate()?.translationY(-resources.getDimension(R.dimen.standard_40))
+        binding.appBarHome.labelTakePhoto?.animate()?.translationY(-resources.getDimension(R.dimen.standard_40))
+    }
+
+    private fun closeFabMenu() {
+        isFabMenuOpen = false
+
+        // Animar rotación del FAB principal para volver a la normalidad
+        binding.appBarHome.fab?.animate()?.rotation(0f)
+
+        // Animar el repliegue de los mini-fabs y etiquetas
+        binding.appBarHome.fabNewGroup?.animate()?.translationY(0f)
+        binding.appBarHome.labelNewGroup?.animate()?.translationY(0f)
+
+        binding.appBarHome.fabAddResult?.animate()?.translationY(0f)
+        binding.appBarHome.labelAddResult?.animate()?.translationY(0f)
+
+        binding.appBarHome.fabInviteFriend?.animate()?.translationY(0f)
+        binding.appBarHome.labelInviteFriend?.animate()?.translationY(0f)
+
+        binding.appBarHome.fabTakePhoto?.animate()?.translationY(0f)
+        binding.appBarHome.labelTakePhoto?.animate()?.translationY(0f)?.withEndAction {
+            if (!isFabMenuOpen) {
+                // Ocultar los elementos cuando la animación termine
+                binding.appBarHome.fabNewGroup?.visibility = View.INVISIBLE
+                binding.appBarHome.fabAddResult?.visibility = View.INVISIBLE
+                binding.appBarHome.fabInviteFriend?.visibility = View.INVISIBLE
+                binding.appBarHome.fabTakePhoto?.visibility = View.INVISIBLE
+                binding.appBarHome.labelNewGroup?.visibility = View.INVISIBLE
+                binding.appBarHome.labelAddResult?.visibility = View.INVISIBLE
+                binding.appBarHome.labelInviteFriend?.visibility = View.INVISIBLE
+                binding.appBarHome.labelTakePhoto?.visibility = View.INVISIBLE
+
+                // Hacerlos no clicables
+                binding.appBarHome.fabNewGroup?.isClickable = false
+                binding.appBarHome.fabAddResult?.isClickable = false
+                binding.appBarHome.fabInviteFriend?.isClickable = false
+                binding.appBarHome.fabTakePhoto?.isClickable = false
+            }
+        }
+    }
+
     private fun saveSession(email: String?, provider: String?) {
         getSharedPreferences(
             getString(R.string.prefs_file),
@@ -137,8 +239,8 @@ class HomeActivity : AppCompatActivity() {
                     .setMessage("¿Seguro que deseas cerrar sesión?")
                     .setPositiveButton("Cerrar") { _, _ ->
                         FirebaseAuth.getInstance().signOut()
-                        val prefs = getSharedPreferences(getString(R.string.prefs_file), MODE_PRIVATE)
-                        prefs.edit { clear() }
+                        val prefs = getSharedPreferences(getString(R.string.prefs_file), Context.MODE_PRIVATE)
+                        prefs.edit().clear().apply()
                         val intent = Intent(this, AuthActivity::class.java)
                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                         startActivity(intent)
