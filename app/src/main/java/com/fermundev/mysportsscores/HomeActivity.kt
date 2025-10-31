@@ -109,6 +109,10 @@ class HomeActivity : AppCompatActivity() {
         }
 
         // Listeners para los mini-fabs
+        binding.appBarHome.fabNewSport?.setOnClickListener {
+            Toast.makeText(this, "Crear nuevo Deporte", Toast.LENGTH_SHORT).show()
+            closeFabMenu()
+        }
         binding.appBarHome.fabNewGroup?.setOnClickListener {
             Toast.makeText(this, "Crear nuevo Grupo", Toast.LENGTH_SHORT).show()
             closeFabMenu()
@@ -131,15 +135,18 @@ class HomeActivity : AppCompatActivity() {
         isFabMenuOpen = true
 
         // Hacer visibles y clicables los mini-fabs y etiquetas
+        binding.appBarHome.fabNewSport?.visibility = View.VISIBLE
         binding.appBarHome.fabNewGroup?.visibility = View.VISIBLE
         binding.appBarHome.fabAddResult?.visibility = View.VISIBLE
         binding.appBarHome.fabInviteFriend?.visibility = View.VISIBLE
         binding.appBarHome.fabTakePhoto?.visibility = View.VISIBLE
+        binding.appBarHome.labelNewSport?.visibility = View.VISIBLE
         binding.appBarHome.labelNewGroup?.visibility = View.VISIBLE
         binding.appBarHome.labelAddResult?.visibility = View.VISIBLE
         binding.appBarHome.labelInviteFriend?.visibility = View.VISIBLE
         binding.appBarHome.labelTakePhoto?.visibility = View.VISIBLE
 
+        binding.appBarHome.fabNewSport?.isClickable = true
         binding.appBarHome.fabNewGroup?.isClickable = true
         binding.appBarHome.fabAddResult?.isClickable = true
         binding.appBarHome.fabInviteFriend?.isClickable = true
@@ -149,17 +156,20 @@ class HomeActivity : AppCompatActivity() {
         binding.appBarHome.fab?.animate()?.rotation(45f)
 
         // Animar la aparición de los mini-fabs y etiquetas
-        binding.appBarHome.fabNewGroup?.animate()?.translationY(-resources.getDimension(R.dimen.standard_10))
-        binding.appBarHome.labelNewGroup?.animate()?.translationY(-resources.getDimension(R.dimen.standard_10))
+        binding.appBarHome.fabNewSport?.animate()?.translationY(-resources.getDimension(R.dimen.standard_10))
+        binding.appBarHome.labelNewSport?.animate()?.translationY(-resources.getDimension(R.dimen.standard_10))
 
-        binding.appBarHome.fabAddResult?.animate()?.translationY(-resources.getDimension(R.dimen.standard_20))
-        binding.appBarHome.labelAddResult?.animate()?.translationY(-resources.getDimension(R.dimen.standard_20))
+        binding.appBarHome.fabNewGroup?.animate()?.translationY(-resources.getDimension(R.dimen.standard_20))
+        binding.appBarHome.labelNewGroup?.animate()?.translationY(-resources.getDimension(R.dimen.standard_20))
 
-        binding.appBarHome.fabInviteFriend?.animate()?.translationY(-resources.getDimension(R.dimen.standard_30))
-        binding.appBarHome.labelInviteFriend?.animate()?.translationY(-resources.getDimension(R.dimen.standard_30))
+        binding.appBarHome.fabAddResult?.animate()?.translationY(-resources.getDimension(R.dimen.standard_30))
+        binding.appBarHome.labelAddResult?.animate()?.translationY(-resources.getDimension(R.dimen.standard_30))
 
-        binding.appBarHome.fabTakePhoto?.animate()?.translationY(-resources.getDimension(R.dimen.standard_40))
-        binding.appBarHome.labelTakePhoto?.animate()?.translationY(-resources.getDimension(R.dimen.standard_40))
+        binding.appBarHome.fabInviteFriend?.animate()?.translationY(-resources.getDimension(R.dimen.standard_40))
+        binding.appBarHome.labelInviteFriend?.animate()?.translationY(-resources.getDimension(R.dimen.standard_40))
+
+        binding.appBarHome.fabTakePhoto?.animate()?.translationY(-resources.getDimension(R.dimen.standard_50))
+        binding.appBarHome.labelTakePhoto?.animate()?.translationY(-resources.getDimension(R.dimen.standard_50))
     }
 
     private fun closeFabMenu() {
@@ -169,6 +179,9 @@ class HomeActivity : AppCompatActivity() {
         binding.appBarHome.fab?.animate()?.rotation(0f)
 
         // Animar el repliegue de los mini-fabs y etiquetas
+        binding.appBarHome.fabNewSport?.animate()?.translationY(0f)
+        binding.appBarHome.labelNewSport?.animate()?.translationY(0f)
+
         binding.appBarHome.fabNewGroup?.animate()?.translationY(0f)
         binding.appBarHome.labelNewGroup?.animate()?.translationY(0f)
 
@@ -182,16 +195,19 @@ class HomeActivity : AppCompatActivity() {
         binding.appBarHome.labelTakePhoto?.animate()?.translationY(0f)?.withEndAction {
             if (!isFabMenuOpen) {
                 // Ocultar los elementos cuando la animación termine
+                binding.appBarHome.fabNewSport?.visibility = View.INVISIBLE
                 binding.appBarHome.fabNewGroup?.visibility = View.INVISIBLE
                 binding.appBarHome.fabAddResult?.visibility = View.INVISIBLE
                 binding.appBarHome.fabInviteFriend?.visibility = View.INVISIBLE
                 binding.appBarHome.fabTakePhoto?.visibility = View.INVISIBLE
+                binding.appBarHome.labelNewSport?.visibility = View.INVISIBLE
                 binding.appBarHome.labelNewGroup?.visibility = View.INVISIBLE
                 binding.appBarHome.labelAddResult?.visibility = View.INVISIBLE
                 binding.appBarHome.labelInviteFriend?.visibility = View.INVISIBLE
                 binding.appBarHome.labelTakePhoto?.visibility = View.INVISIBLE
 
                 // Hacerlos no clicables
+                binding.appBarHome.fabNewSport?.isClickable = false
                 binding.appBarHome.fabNewGroup?.isClickable = false
                 binding.appBarHome.fabAddResult?.isClickable = false
                 binding.appBarHome.fabInviteFriend?.isClickable = false

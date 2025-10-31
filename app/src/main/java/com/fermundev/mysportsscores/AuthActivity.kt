@@ -10,12 +10,16 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.widget.doAfterTextChanged
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.SignInButton
 import com.google.android.gms.common.api.ApiException
+import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.messaging.FirebaseMessaging
 
 private const val GOOGLE_SIGN_IN = 100
 
@@ -24,8 +28,9 @@ class AuthActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_auth)
+        
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
@@ -37,13 +42,33 @@ class AuthActivity : AppCompatActivity() {
         analytics.logEvent("InitScreen", bundle)
 
         //SetUp
+        notification()
         setUp()
         session()
     }
 
+    private fun notification() {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                task.result?.let {
+                    println("Este es el token del dispositivo: $it")
+                }
+            }
+        }
+
+        //Temas (Topics)
+        FirebaseMessaging.getInstance().subscribeToTopic("Tutorial")
+
+        //Recuperar Información
+        val url = intent.getStringExtra("url")
+        url?.let {
+            println("Ha llegado información en una push: $it")
+        }
+    }
+
     override fun onStart() {
         super.onStart()
-        val authLayout = findViewById<View>(R.id.authLayout)
+        val authLayout: View = findViewById(R.id.authLayout)
         authLayout.visibility = View.VISIBLE
     }
 
@@ -53,7 +78,7 @@ class AuthActivity : AppCompatActivity() {
         val provider = prefs.getString("provider", null)
 
         if (email != null && provider != null) {
-            val authLayout = findViewById<View>(R.id.authLayout)
+            val authLayout: View = findViewById(R.id.authLayout)
             authLayout.visibility = View.INVISIBLE
             showHome(email, ProviderType.valueOf(provider))
         }
@@ -62,13 +87,20 @@ class AuthActivity : AppCompatActivity() {
     private fun setUp() {
         title = "Autenticación"
 
-        val singUpButton: Button = findViewById(R.id.signUpButton)
+        val signUpButton: Button = findViewById(R.id.signUpButton)
         val logInButton: Button = findViewById(R.id.logInButton)
+        val googleButton: SignInButton = findViewById(R.id.googleButton)
         val emailEditText: EditText = findViewById(R.id.emailEditText)
         val passwordEditText: EditText = findViewById(R.id.passwordEditText)
+        val emailTextInputLayout: TextInputLayout = findViewById(R.id.emailTextInputLayout)
+        val passwordTextInputLayout: TextInputLayout = findViewById(R.id.passwordTextInputLayout)
+
+        // Limpiar errores al escribir
+        emailEditText.doAfterTextChanged { emailTextInputLayout.error = null }
+        passwordEditText.doAfterTextChanged { passwordTextInputLayout.error = null }
 
         //SignUp
-        singUpButton.setOnClickListener {
+        signUpButton.setOnClickListener {
             val email = emailEditText.text.toString()
             val password = passwordEditText.text.toString()
 
@@ -76,26 +108,18 @@ class AuthActivity : AppCompatActivity() {
                 FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            emailEditText.text.clear()
-                            passwordEditText.text.clear()
-                            // Registro exitoso, navegar a la pantalla principal
                             showHome(task.result?.user?.email ?: "", ProviderType.BASIC)
                         } else {
-                            // Si el registro falla, mostrar un mensaje al usuario.
-                            AlertDialog.Builder(this)
-                                .setTitle("Error")
-                                .setMessage("Se ha producido un error al registrar el usuario o " +
-                                        "ya existe. Inicia Sesión.")
-                                .setPositiveButton("Aceptar", null)
-                                .show()
+                            showAlert("Se ha producido un error al registrar el usuario o ya existe.")
                         }
                     }
             } else {
-                emptyFieldsError()
+                if (email.isEmpty()) emailTextInputLayout.error = "Este campo es obligatorio"
+                if (password.isEmpty()) passwordTextInputLayout.error = "Este campo es obligatorio"
             }
         }
 
-        //LogIn with email and password
+        //LogIn
         logInButton.setOnClickListener {
             val email = emailEditText.text.toString()
             val password = passwordEditText.text.toString()
@@ -104,26 +128,18 @@ class AuthActivity : AppCompatActivity() {
                 FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            emailEditText.text.clear()
-                            passwordEditText.text.clear()
                             showHome(task.result?.user?.email ?: "", ProviderType.BASIC)
                         } else {
-                            // Si el inicio de sesión falla, mostrar un mensaje al usuario.
-                            AlertDialog.Builder(this)
-                                .setTitle("Error")
-                                .setMessage("El email y/o la contraseña son incorrectos o " +
-                                        "no existe el usuario. Intenta de nuevo.")
-                                .setPositiveButton("Aceptar", null)
-                                .show()
+                            showAlert("El email y/o la contraseña son incorrectos.")
                         }
                     }
             } else {
-                emptyFieldsError()
+                if (email.isEmpty()) emailTextInputLayout.error = "Este campo es obligatorio"
+                if (password.isEmpty()) passwordTextInputLayout.error = "Este campo es obligatorio"
             }
         }
 
-        //Inicio de Sesión con Google
-        val googleButton: Button = findViewById(R.id.googleButton)
+        // Google Sign In
         googleButton.setOnClickListener {
             val googleConfig = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
@@ -136,16 +152,15 @@ class AuthActivity : AppCompatActivity() {
         }
     }
 
-    private fun emptyFieldsError() {
+    private fun showAlert(message: String) {
         AlertDialog.Builder(this)
             .setTitle("Error")
-            .setMessage("El email y/o la contraseña no pueden estar vacíos.")
+            .setMessage(message)
             .setPositiveButton("Aceptar", null)
             .show()
     }
 
     private fun showHome(email: String, provider: ProviderType) {
-        // Registro exitoso, navegar a la pantalla principal
         val homeIntent = Intent(this, HomeActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("email", email)
@@ -156,37 +171,24 @@ class AuthActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-
+        
         if (requestCode == GOOGLE_SIGN_IN) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
-
             try {
                 val account = task.getResult(ApiException::class.java)
-
                 if (account != null) {
-                    val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-                    FirebaseAuth.getInstance().signInWithCredential(credential)
-
-                    if (task.isSuccessful) {
-                        showHome(account.email ?: "", ProviderType.GOOGLE)
-                    } else {
-                        // Si el inicio de sesión falla, mostrar un mensaje al usuario.
-                        AlertDialog.Builder(this)
-                            .setTitle("Error")
-                            .setMessage("Error al ingresar con Google. Intenta de nuevo.")
-                            .setPositiveButton("Aceptar", null)
-                            .show()
-                    }
+                    FirebaseAuth.getInstance().signInWithCredential(GoogleAuthProvider.getCredential(account.idToken, null))
+                        .addOnCompleteListener { 
+                            if (it.isSuccessful) {
+                                showHome(account.email ?: "", ProviderType.GOOGLE)
+                            } else {
+                                showAlert("Error al autenticar con Firebase.")
+                            }
+                        }
                 }
             } catch (e: ApiException) {
-                AlertDialog.Builder(this)
-                    .setTitle("Error")
-                    .setMessage("Error al ingresar con Google. Intenta de nuevo.")
-                    .setPositiveButton("Aceptar", null)
-                    .show()
+                showAlert("Error al obtener los datos de Google.")
             }
-
-
         }
     }
 }

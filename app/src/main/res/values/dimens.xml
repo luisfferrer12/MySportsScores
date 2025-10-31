@@ -4,6 +4,7 @@
     <dimen name="standard_20">20dp</dimen>
     <dimen name="standard_30">30dp</dimen>
     <dimen name="standard_40">40dp</dimen>
+    <dimen name="standard_50">50dp</dimen>
     <dimen name="fragment_horizontal_margin">16dp</dimen>
     <dimen name="item_transform_image_length">48dp</dimen>
     <dimen name="reflow_text_block_max_percent">1</dimen>
