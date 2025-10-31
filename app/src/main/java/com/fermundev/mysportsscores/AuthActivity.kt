@@ -58,6 +58,12 @@ class AuthActivity : AppCompatActivity() {
 
         //Temas (Topics)
         FirebaseMessaging.getInstance().subscribeToTopic("Tutorial")
+
+        //Recuperar Información
+        val url = intent.getStringExtra("url")
+        url?.let {
+            println("Ha llegado información en una push: $it")
+        }
     }
 
     override fun onStart() {
