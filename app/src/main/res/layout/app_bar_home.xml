@@ -138,6 +138,35 @@
             android:visibility="invisible"
             app:backgroundTint="@color/orange_smooth"
             app:fabSize="mini"
+            app:layout_constraintBottom_toTopOf="@+id/fab_new_sport"
+            app:layout_constraintEnd_toEndOf="@+id/fab"
+            app:srcCompat="@drawable/ic_group" />
+
+
+        <!-- Etiqueta para New Group -->
+        <TextView
+            android:id="@+id/label_new_sport"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:background="@color/orange_shadow"
+            android:padding="8dp"
+            android:text="Crear nuevo Deporte"
+            android:textColor="@android:color/white"
+            android:visibility="invisible"
+            app:layout_constraintBottom_toBottomOf="@+id/fab_new_sport"
+            app:layout_constraintEnd_toStartOf="@+id/fab_new_sport"
+            app:layout_constraintTop_toTopOf="@+id/fab_new_sport" />
+
+        <!-- Mini FAB: New Group -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fab_new_sport"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="false"
+            android:visibility="invisible"
+            app:backgroundTint="@color/orange_smooth"
+            app:fabSize="mini"
             app:layout_constraintBottom_toTopOf="@+id/fab"
             app:layout_constraintEnd_toEndOf="@+id/fab"
             app:srcCompat="@drawable/ic_group" />
