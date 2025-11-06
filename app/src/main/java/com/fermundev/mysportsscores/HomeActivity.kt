@@ -20,6 +20,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.fermundev.mysportsscores.databinding.ActivityHomeBinding
 import com.google.firebase.auth.FirebaseAuth
 import androidx.core.content.edit
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 enum class ProviderType{
     BASIC,
@@ -43,6 +44,8 @@ class HomeActivity : AppCompatActivity() {
         val bundle = intent.extras
         val email = bundle?.getString("email")
         val provider = bundle?.getString("provider")
+        val idUser = bundle?.getString("idUser")
+
         //SetUp
         setUp(email ?:"", provider ?:"")
 
@@ -51,6 +54,9 @@ class HomeActivity : AppCompatActivity() {
 
         // Speed Dial FAB Logic
         setupFabMenu()
+
+        //Registro de errores de navegación
+        getErrorInNavigation(email, provider, idUser)
 
         val navHostFragment =
             (supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_home) as NavHostFragment?)!!
@@ -94,6 +100,12 @@ class HomeActivity : AppCompatActivity() {
                 navController.navigateUp()
             }
         }
+    }
+
+    private fun getErrorInNavigation(email: String?, provider: String?, idUser: String?) {
+        email?.let { FirebaseCrashlytics.getInstance().setUserId(it) }
+        provider?.let { FirebaseCrashlytics.getInstance().setCustomKey("provider", it) }
+        idUser?.let { FirebaseCrashlytics.getInstance().setCustomKey("idUser", it) }
     }
 
     private fun setupFabMenu() {
