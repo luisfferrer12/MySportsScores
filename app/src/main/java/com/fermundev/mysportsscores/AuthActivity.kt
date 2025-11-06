@@ -24,6 +24,8 @@ import com.google.firebase.messaging.FirebaseMessaging
 private const val GOOGLE_SIGN_IN = 100
 
 class AuthActivity : AppCompatActivity() {
+    private var idUser: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -52,6 +54,7 @@ class AuthActivity : AppCompatActivity() {
             if (task.isSuccessful) {
                 task.result?.let {
                     println("Este es el token del dispositivo: $it")
+                    idUser = it
                 }
             }
         }
@@ -80,7 +83,7 @@ class AuthActivity : AppCompatActivity() {
         if (email != null && provider != null) {
             val authLayout: View = findViewById(R.id.authLayout)
             authLayout.visibility = View.INVISIBLE
-            showHome(email, ProviderType.valueOf(provider))
+            showHome(email, ProviderType.valueOf(provider), idUser)
         }
     }
 
@@ -108,7 +111,7 @@ class AuthActivity : AppCompatActivity() {
                 FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            showHome(task.result?.user?.email ?: "", ProviderType.BASIC)
+                            showHome(task.result?.user?.email ?: "", ProviderType.BASIC, idUser)
                         } else {
                             showAlert("Se ha producido un error al registrar el usuario o ya existe.")
                         }
@@ -128,7 +131,7 @@ class AuthActivity : AppCompatActivity() {
                 FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            showHome(task.result?.user?.email ?: "", ProviderType.BASIC)
+                            showHome(task.result?.user?.email ?: "", ProviderType.BASIC, idUser)
                         } else {
                             showAlert("El email y/o la contraseña son incorrectos.")
                         }
@@ -160,11 +163,12 @@ class AuthActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showHome(email: String, provider: ProviderType) {
+    private fun showHome(email: String, provider: ProviderType, idUser: String?) {
         val homeIntent = Intent(this, HomeActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("email", email)
             putExtra("provider", provider.name)
+            putExtra("idUser", idUser)
         }
         startActivity(homeIntent)
     }
@@ -180,7 +184,7 @@ class AuthActivity : AppCompatActivity() {
                     FirebaseAuth.getInstance().signInWithCredential(GoogleAuthProvider.getCredential(account.idToken, null))
                         .addOnCompleteListener { 
                             if (it.isSuccessful) {
-                                showHome(account.email ?: "", ProviderType.GOOGLE)
+                                showHome(account.email ?: "", ProviderType.GOOGLE, idUser)
                             } else {
                                 showAlert("Error al autenticar con Firebase.")
                             }

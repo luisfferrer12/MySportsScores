@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
 
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -61,6 +62,7 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth:24.0.1")
     implementation("com.google.firebase:firebase-messaging:24.0.0")
+    implementation("com.google.firebase:firebase-crashlytics") // Versión gestionada por el BOM
 
     implementation("com.google.android.gms:play-services-auth:20.5.0")
 }
