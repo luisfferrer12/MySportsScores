@@ -16,10 +16,15 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.SignInButton
 import com.google.android.gms.common.api.ApiException
 import com.google.android.material.textfield.TextInputLayout
+import com.google.firebase.Firebase
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings
+import com.google.firebase.remoteconfig.remoteConfig
+import com.google.firebase.remoteconfig.remoteConfigSettings
 
 private const val GOOGLE_SIGN_IN = 100
 
@@ -42,6 +47,18 @@ class AuthActivity : AppCompatActivity() {
         val bundle = Bundle()
         bundle.putString("message", "Integración de Firebase exitosa!")
         analytics.logEvent("InitScreen", bundle)
+
+        //Remote Config
+        val configSettings: FirebaseRemoteConfigSettings = remoteConfigSettings {
+            minimumFetchIntervalInSeconds = 60
+        }
+
+        val firebaseConfig = Firebase.remoteConfig
+        firebaseConfig.setConfigSettingsAsync(configSettings)
+        firebaseConfig.setDefaultsAsync(mapOf(
+            "show_error_button" to false,
+            "error_button_text" to "Forzar Error"
+        ))
 
         //SetUp
         notification()

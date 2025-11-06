@@ -9,4 +9,9 @@
         android:id="@+id/logOutButton"
         android:icon="@drawable/ic_settings_black_24dp"
         android:title="@string/menu_logOut" />
+
+    <item
+        android:id="@+id/errorButton"
+        android:icon="@drawable/ic_settings_black_24dp"
+        android:title="Forzar Error" />
 </menu>

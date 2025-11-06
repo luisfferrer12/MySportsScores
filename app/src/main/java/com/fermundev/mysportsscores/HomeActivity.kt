@@ -20,7 +20,9 @@ import androidx.appcompat.app.AppCompatActivity
 import com.fermundev.mysportsscores.databinding.ActivityHomeBinding
 import com.google.firebase.auth.FirebaseAuth
 import androidx.core.content.edit
+import com.google.firebase.Firebase
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.remoteconfig.remoteConfig
 
 enum class ProviderType{
     BASIC,
@@ -247,12 +249,28 @@ class HomeActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        val result = super.onCreateOptionsMenu(menu)
+        //val result = super.onCreateOptionsMenu(menu)
         val navView: NavigationView? = findViewById(R.id.nav_view)
         if (navView == null) {
             menuInflater.inflate(R.menu.overflow, menu)
+
+            val errorButton = menu.findItem(R.id.errorButton)
+            errorButton.isVisible = false
+
+            Firebase.remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val showErrorButton = Firebase.remoteConfig.getBoolean("show_error_button")
+                    val newButtonText = Firebase.remoteConfig.getString("error_button_text")
+
+                    if (showErrorButton) {
+                        errorButton.isVisible = true
+                    }
+
+                    errorButton.title = newButtonText
+                }
+            }
         }
-        return result
+        return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -275,6 +293,10 @@ class HomeActivity : AppCompatActivity() {
                     }
                     .setNegativeButton("Cancelar", null)
                     .show()
+                return true
+            }
+            R.id.errorButton -> {
+                throw RuntimeException("Test Crash") // Force a crash
                 return true
             }
         }
