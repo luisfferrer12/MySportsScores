@@ -1,27 +1,33 @@
 package com.fermundev.mysportsscores
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.activity.addCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import com.google.android.material.navigation.NavigationView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
-import androidx.appcompat.app.AppCompatActivity
 import com.fermundev.mysportsscores.databinding.ActivityHomeBinding
-import com.google.firebase.auth.FirebaseAuth
-import androidx.core.content.edit
+import com.google.android.material.navigation.NavigationView
 import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.remoteconfig.remoteConfig
 
 enum class ProviderType{
@@ -36,12 +42,32 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var navController: NavController
     private var backPressedTime: Long = 0
     private var isFabMenuOpen = false
+    private val db = FirebaseFirestore.getInstance()
+
+    // Lanzador para solicitar el permiso de notificaciones
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Toast.makeText(this, "Permisos para notificaciones concedidos", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Permisos para notificaciones denegados", Toast.LENGTH_SHORT).show()
+            // Si el usuario deniega, actualizamos su preferencia en la base de datos
+            val email = intent.getStringExtra("email")
+            if (email != null) {
+                db.collection("users").document(email).update("notificaciones", false)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.appBarHome.toolbar)
+
+        // Solicitar permiso de notificaciones al entrar al Home
+        askNotificationPermission()
 
         val bundle = intent.extras
         val email = bundle?.getString("email")
@@ -64,11 +90,10 @@ class HomeActivity : AppCompatActivity() {
             (supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_home) as NavHostFragment?)!!
         navController = navHostFragment.navController
 
-        // CORRECCIÓN: Se elimina nav_settings de las pantallas de nivel superior
         binding.navView?.let {
             appBarConfiguration = AppBarConfiguration(
                 setOf(
-                    R.id.nav_transform, R.id.nav_reflow, R.id.nav_slideshow
+                    R.id.nav_home, R.id.nav_results, R.id.nav_gallery
                 ),
                 binding.drawerLayout
             )
@@ -79,7 +104,7 @@ class HomeActivity : AppCompatActivity() {
         binding.appBarHome.contentHome.bottomNavView?.let {
             appBarConfiguration = AppBarConfiguration(
                 setOf(
-                    R.id.nav_transform, R.id.nav_reflow, R.id.nav_slideshow
+                    R.id.nav_home, R.id.nav_results, R.id.nav_gallery
                 )
             )
             setupActionBarWithNavController(navController, appBarConfiguration)
@@ -88,9 +113,7 @@ class HomeActivity : AppCompatActivity() {
 
         // Lógica corregida para el botón "Atrás"
         onBackPressedDispatcher.addCallback(this) {
-            // ¿Estamos en la pantalla de inicio del gráfico de navegación?
             if (navController.currentDestination?.id == navController.graph.startDestinationId) {
-                // Sí: aplicar lógica de doble pulsación para salir
                 if (backPressedTime + 2000 > System.currentTimeMillis()) {
                     finish()
                 } else {
@@ -98,8 +121,16 @@ class HomeActivity : AppCompatActivity() {
                 }
                 backPressedTime = System.currentTimeMillis()
             } else {
-                // No: navegar hacia atrás normalmente (ej. de Settings a Home)
                 navController.navigateUp()
+            }
+        }
+    }
+
+    private fun askNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                 // Si no tenemos permiso, lo pedimos
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }
@@ -111,7 +142,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun setupFabMenu() {
-        // Inicialmente los elementos están ocultos y no son clicables
+        // ... (código sin cambios)
         closeFabMenu()
 
         binding.appBarHome.fab?.setOnClickListener {
@@ -122,7 +153,6 @@ class HomeActivity : AppCompatActivity() {
             }
         }
 
-        // Listeners para los mini-fabs
         binding.appBarHome.fabNewSport?.setOnClickListener {
             Toast.makeText(this, "Crear nuevo Deporte", Toast.LENGTH_SHORT).show()
             closeFabMenu()
@@ -148,7 +178,6 @@ class HomeActivity : AppCompatActivity() {
     private fun showFabMenu() {
         isFabMenuOpen = true
 
-        // Hacer visibles y clicables los mini-fabs y etiquetas
         binding.appBarHome.fabNewSport?.visibility = View.VISIBLE
         binding.appBarHome.fabNewGroup?.visibility = View.VISIBLE
         binding.appBarHome.fabAddResult?.visibility = View.VISIBLE
@@ -166,10 +195,8 @@ class HomeActivity : AppCompatActivity() {
         binding.appBarHome.fabInviteFriend?.isClickable = true
         binding.appBarHome.fabTakePhoto?.isClickable = true
 
-        // Animar rotación del FAB principal
         binding.appBarHome.fab?.animate()?.rotation(45f)
 
-        // Animar la aparición de los mini-fabs y etiquetas
         binding.appBarHome.fabNewSport?.animate()?.translationY(-resources.getDimension(R.dimen.standard_10))
         binding.appBarHome.labelNewSport?.animate()?.translationY(-resources.getDimension(R.dimen.standard_10))
 
@@ -187,12 +214,11 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun closeFabMenu() {
+        // ... (código sin cambios)
         isFabMenuOpen = false
 
-        // Animar rotación del FAB principal para volver a la normalidad
         binding.appBarHome.fab?.animate()?.rotation(0f)
 
-        // Animar el repliegue de los mini-fabs y etiquetas
         binding.appBarHome.fabNewSport?.animate()?.translationY(0f)
         binding.appBarHome.labelNewSport?.animate()?.translationY(0f)
 
@@ -208,7 +234,6 @@ class HomeActivity : AppCompatActivity() {
         binding.appBarHome.fabTakePhoto?.animate()?.translationY(0f)
         binding.appBarHome.labelTakePhoto?.animate()?.translationY(0f)?.withEndAction {
             if (!isFabMenuOpen) {
-                // Ocultar los elementos cuando la animación termine
                 binding.appBarHome.fabNewSport?.visibility = View.INVISIBLE
                 binding.appBarHome.fabNewGroup?.visibility = View.INVISIBLE
                 binding.appBarHome.fabAddResult?.visibility = View.INVISIBLE
@@ -220,7 +245,6 @@ class HomeActivity : AppCompatActivity() {
                 binding.appBarHome.labelInviteFriend?.visibility = View.INVISIBLE
                 binding.appBarHome.labelTakePhoto?.visibility = View.INVISIBLE
 
-                // Hacerlos no clicables
                 binding.appBarHome.fabNewSport?.isClickable = false
                 binding.appBarHome.fabNewGroup?.isClickable = false
                 binding.appBarHome.fabAddResult?.isClickable = false
@@ -231,25 +255,17 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun saveSession(email: String?, provider: String?) {
-        getSharedPreferences(
-            getString(R.string.prefs_file),
-            MODE_PRIVATE
-        ).edit {
-            putString("email", email)
-            putString("provider", provider)
-        }
+        getSharedPreferences(getString(R.string.prefs_file), MODE_PRIVATE).edit { putString("email", email); putString("provider", provider) }
     }
 
     private fun setUp(email: String, provider: String) {
         title = "Inicio"
-
         println("EMAIL ----> $email")
         println("PROVIDER ----> $provider")
-
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        //val result = super.onCreateOptionsMenu(menu)
+        // ... (código sin cambios)
         val navView: NavigationView? = findViewById(R.id.nav_view)
         if (navView == null) {
             menuInflater.inflate(R.menu.overflow, menu)
@@ -274,6 +290,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        // ... (código sin cambios)
         when (item.itemId) {
             R.id.nav_settings -> {
                 navController.navigate(R.id.nav_settings)

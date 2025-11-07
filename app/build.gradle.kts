@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("kotlin-kapt")
 
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
@@ -64,6 +65,12 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging:24.0.0")
     implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.google.firebase:firebase-config:23.0.1")
+    implementation("com.google.firebase:firebase-firestore:26.0.2")
+    implementation("com.google.firebase:firebase-storage-ktx:21.0.0") // Versión especificada
+
+    // Glide
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    kapt("com.github.bumptech.glide:compiler:4.16.0")
 
     implementation("com.google.android.gms:play-services-auth:20.5.0")
 }

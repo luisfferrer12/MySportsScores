@@ -1,4 +1,4 @@
-package com.fermundev.mysportsscores.ui.reflow
+package com.fermundev.mysportsscores.ui.gallery
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -7,11 +7,11 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
-import com.fermundev.mysportsscores.databinding.FragmentReflowBinding
+import com.fermundev.mysportsscores.databinding.FragmentGalleryBinding
 
-class ReflowFragment : Fragment() {
+class GalleryFragment : Fragment() {
 
-    private var _binding: FragmentReflowBinding? = null
+    private var _binding: FragmentGalleryBinding? = null
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -22,14 +22,14 @@ class ReflowFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val reflowViewModel =
-            ViewModelProvider(this).get(ReflowViewModel::class.java)
+        val galleryViewModel =
+            ViewModelProvider(this).get(GalleryViewModel::class.java)
 
-        _binding = FragmentReflowBinding.inflate(inflater, container, false)
+        _binding = FragmentGalleryBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        val textView: TextView = binding.textReflow
-        reflowViewModel.text.observe(viewLifecycleOwner) {
+        val textView: TextView = binding.textSlideshow
+        galleryViewModel.text.observe(viewLifecycleOwner) {
             textView.text = it
         }
         return root

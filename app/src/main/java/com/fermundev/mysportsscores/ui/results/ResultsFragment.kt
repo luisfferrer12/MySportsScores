@@ -1,4 +1,4 @@
-package com.fermundev.mysportsscores.ui.slideshow
+package com.fermundev.mysportsscores.ui.results
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -7,11 +7,11 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
-import com.fermundev.mysportsscores.databinding.FragmentSlideshowBinding
+import com.fermundev.mysportsscores.databinding.FragmentResultsBinding
 
-class SlideshowFragment : Fragment() {
+class ResultsFragment : Fragment() {
 
-    private var _binding: FragmentSlideshowBinding? = null
+    private var _binding: FragmentResultsBinding? = null
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -22,14 +22,14 @@ class SlideshowFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val slideshowViewModel =
-            ViewModelProvider(this).get(SlideshowViewModel::class.java)
+        val resultsViewModel =
+            ViewModelProvider(this).get(ResultsViewModel::class.java)
 
-        _binding = FragmentSlideshowBinding.inflate(inflater, container, false)
+        _binding = FragmentResultsBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        val textView: TextView = binding.textSlideshow
-        slideshowViewModel.text.observe(viewLifecycleOwner) {
+        val textView: TextView = binding.textReflow
+        resultsViewModel.text.observe(viewLifecycleOwner) {
             textView.text = it
         }
         return root

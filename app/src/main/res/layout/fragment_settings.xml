@@ -136,27 +136,26 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/editUsernameButton" />
-            
-        <!-- Sync Section -->
-        <TextView
-            android:id="@+id/syncLabel"
+
+        <!-- Action Buttons -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/saveButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Sincronización"
-            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/changePasswordButton" />
-            
-        <Spinner
-            android:id="@+id/syncSpinner"
-            style="@style/Widget.AppCompat.Spinner.Underlined"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="32dp"
+            android:text="Guardar"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/syncLabel" />
+            app:layout_constraintTop_toBottomOf="@id/changePasswordButton" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/cancelButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:text="Cancelar"
+            app:layout_constraintEnd_toStartOf="@id/saveButton"
+            app:layout_constraintTop_toTopOf="@id/saveButton" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

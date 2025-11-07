@@ -20,8 +20,8 @@ import com.google.firebase.Firebase
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
-import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings
 import com.google.firebase.remoteconfig.remoteConfig
 import com.google.firebase.remoteconfig.remoteConfigSettings
@@ -29,7 +29,7 @@ import com.google.firebase.remoteconfig.remoteConfigSettings
 private const val GOOGLE_SIGN_IN = 100
 
 class AuthActivity : AppCompatActivity() {
-    private var idUser: String? = null
+    private val db = FirebaseFirestore.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,13 +71,9 @@ class AuthActivity : AppCompatActivity() {
             if (task.isSuccessful) {
                 task.result?.let {
                     println("Este es el token del dispositivo: $it")
-                    idUser = it
                 }
             }
         }
-
-        //Temas (Topics)
-        FirebaseMessaging.getInstance().subscribeToTopic("Tutorial")
 
         //Recuperar Información
         val url = intent.getStringExtra("url")
@@ -100,7 +96,7 @@ class AuthActivity : AppCompatActivity() {
         if (email != null && provider != null) {
             val authLayout: View = findViewById(R.id.authLayout)
             authLayout.visibility = View.INVISIBLE
-            showHome(email, ProviderType.valueOf(provider), idUser)
+            showHome(email, ProviderType.valueOf(provider))
         }
     }
 
@@ -128,7 +124,7 @@ class AuthActivity : AppCompatActivity() {
                 FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            showHome(task.result?.user?.email ?: "", ProviderType.BASIC, idUser)
+                            showHome(task.result?.user?.email ?: "", ProviderType.BASIC)
                         } else {
                             showAlert("Se ha producido un error al registrar el usuario o ya existe.")
                         }
@@ -148,7 +144,7 @@ class AuthActivity : AppCompatActivity() {
                 FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            showHome(task.result?.user?.email ?: "", ProviderType.BASIC, idUser)
+                            showHome(task.result?.user?.email ?: "", ProviderType.BASIC)
                         } else {
                             showAlert("El email y/o la contraseña son incorrectos.")
                         }
@@ -180,14 +176,52 @@ class AuthActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showHome(email: String, provider: ProviderType, idUser: String?) {
+    private fun showHome(email: String, provider: ProviderType) {
+        saveUserInDatabase(email, provider)
+
         val homeIntent = Intent(this, HomeActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("email", email)
             putExtra("provider", provider.name)
-            putExtra("idUser", idUser)
         }
         startActivity(homeIntent)
+    }
+
+    private fun saveUserInDatabase(email: String, provider: ProviderType) {
+        val docRef = db.collection("users").document(email)
+        docRef.get()
+            .addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    println("El usuario con email $email ya existe. Sincronizando suscripción...")
+                    val notificationsEnabled = document.getBoolean("notificaciones") ?: true
+                    if (notificationsEnabled) {
+                        FirebaseMessaging.getInstance().subscribeToTopic("MySportsNotifications")
+                    } else {
+                        FirebaseMessaging.getInstance().unsubscribeFromTopic("MySportsNotifications")
+                    }
+                } else {
+                    println("El usuario no existe, creando nuevo documento...")
+                    val nickName = email.substringBefore('@').replaceFirstChar(Char::titlecase)
+                    val userData = hashMapOf(
+                        "email" to email,
+                        "provider" to provider.name,
+                        "grupoActivo" to "",
+                        "notificaciones" to true, // Activado por defecto
+                        "nickName" to nickName,
+                        "listaDeportes" to emptyList<String>()
+                    )
+
+                    docRef.set(userData)
+                        .addOnSuccessListener { 
+                            println("Nuevo usuario guardado con éxito.")
+                            FirebaseMessaging.getInstance().subscribeToTopic("MySportsNotifications")
+                        }
+                        .addOnFailureListener { e -> println("Error al guardar el nuevo usuario: ${e.message}") }
+                }
+            }
+            .addOnFailureListener { exception ->
+                println("Error al intentar leer el documento: ${exception.message}")
+            }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -201,7 +235,7 @@ class AuthActivity : AppCompatActivity() {
                     FirebaseAuth.getInstance().signInWithCredential(GoogleAuthProvider.getCredential(account.idToken, null))
                         .addOnCompleteListener { 
                             if (it.isSuccessful) {
-                                showHome(account.email ?: "", ProviderType.GOOGLE, idUser)
+                                showHome(account.email ?: "", ProviderType.GOOGLE)
                             } else {
                                 showAlert("Error al autenticar con Firebase.")
                             }

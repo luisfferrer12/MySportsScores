@@ -1,4 +1,4 @@
-package com.fermundev.mysportsscores.ui.transform
+package com.fermundev.mysportsscores.ui.home
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -13,7 +13,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.fermundev.mysportsscores.R
-import com.fermundev.mysportsscores.databinding.FragmentTransformBinding
+import com.fermundev.mysportsscores.databinding.FragmentHomeBinding
 import com.fermundev.mysportsscores.databinding.ItemTransformBinding
 
 /**
@@ -22,9 +22,9 @@ import com.fermundev.mysportsscores.databinding.ItemTransformBinding
  * the [RecyclerView] using LinearLayoutManager in a small screen
  * and shows items using GridLayoutManager in a large screen.
  */
-class TransformFragment : Fragment() {
+class HomeFragment : Fragment() {
 
-    private var _binding: FragmentTransformBinding? = null
+    private var _binding: FragmentHomeBinding? = null
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -35,14 +35,14 @@ class TransformFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val transformViewModel = ViewModelProvider(this).get(TransformViewModel::class.java)
-        _binding = FragmentTransformBinding.inflate(inflater, container, false)
+        val homeViewModel = ViewModelProvider(this).get(HomeViewModel::class.java)
+        _binding = FragmentHomeBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
         val recyclerView = binding.recyclerviewTransform
         val adapter = TransformAdapter()
         recyclerView.adapter = adapter
-        transformViewModel.texts.observe(viewLifecycleOwner) {
+        homeViewModel.texts.observe(viewLifecycleOwner) {
             adapter.submitList(it)
         }
         return root

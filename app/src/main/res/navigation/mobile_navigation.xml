@@ -3,25 +3,25 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mobile_navigation"
-    app:startDestination="@+id/nav_transform">
+    app:startDestination="@+id/nav_home">
 
     <fragment
-        android:id="@+id/nav_transform"
-        android:name="com.fermundev.mysportsscores.ui.transform.TransformFragment"
-        android:label="@string/menu_transform"
-        tools:layout="@layout/fragment_transform" />
+        android:id="@+id/nav_home"
+        android:name="com.fermundev.mysportsscores.ui.home.HomeFragment"
+        android:label="@string/menu_home"
+        tools:layout="@layout/fragment_home" />
 
     <fragment
-        android:id="@+id/nav_reflow"
-        android:name="com.fermundev.mysportsscores.ui.reflow.ReflowFragment"
-        android:label="@string/menu_reflow"
-        tools:layout="@layout/fragment_reflow" />
+        android:id="@+id/nav_results"
+        android:name="com.fermundev.mysportsscores.ui.results.ResultsFragment"
+        android:label="@string/menu_results"
+        tools:layout="@layout/fragment_results" />
 
     <fragment
-        android:id="@+id/nav_slideshow"
-        android:name="com.fermundev.mysportsscores.ui.slideshow.SlideshowFragment"
+        android:id="@+id/nav_gallery"
+        android:name="com.fermundev.mysportsscores.ui.gallery.GalleryFragment"
         android:label="@string/menu_slideshow"
-        tools:layout="@layout/fragment_slideshow" />
+        tools:layout="@layout/fragment_gallery" />
 
     <fragment
         android:id="@+id/nav_settings"

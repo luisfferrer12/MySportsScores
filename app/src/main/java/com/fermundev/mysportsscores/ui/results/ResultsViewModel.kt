@@ -1,10 +1,10 @@
-package com.fermundev.mysportsscores.ui.reflow
+package com.fermundev.mysportsscores.ui.results
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 
-class ReflowViewModel : ViewModel() {
+class ResultsViewModel : ViewModel() {
 
     private val _text = MutableLiveData<String>().apply {
         value = "This is reflow Fragment"
