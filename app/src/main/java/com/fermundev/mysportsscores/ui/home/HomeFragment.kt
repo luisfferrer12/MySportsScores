@@ -23,16 +23,11 @@ class HomeFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
-        val root: View = binding.root
-
         loadActiveGroupData()
-
-        return root
+        return binding.root
     }
 
     private fun loadActiveGroupData() {
-        binding.recyclerviewTransform.visibility = View.GONE
-
         user?.email?.let {
             db.collection("users").document(it).get()
                 .addOnSuccessListener { document ->
@@ -40,21 +35,30 @@ class HomeFragment : Fragment() {
                         val activeGroup = document.getString("grupoActivo")
 
                         if (activeGroup.isNullOrEmpty()) {
-                            binding.emptyStateMessage.text = "Aún no tienes deportes registrados para ver tus resultados"
+                            // No hay deporte activo, mostrar mensaje principal
+                            binding.emptyStateMessage.visibility = View.VISIBLE
+                            binding.mainContentGroup?.visibility = View.GONE
                         } else {
-                            binding.emptyStateMessage.text = "Tienes seleccionado: $activeGroup"
-                            // TODO: Aquí irá la lógica para cargar los datos del podium en el RecyclerView
+                            // Hay un deporte activo, mostrar contenido principal
+                            binding.emptyStateMessage.visibility = View.GONE
+                            binding.mainContentGroup?.visibility = View.VISIBLE
+                            binding.sportTitleTextview?.text = activeGroup
+
+                            // TODO: Lógica para cargar los resultados del deporte activo
+
+                            // Por ahora, asumimos que no hay resultados
+                            binding.rankingRecyclerview?.visibility = View.GONE
+                            binding.emptyRankingMessage?.visibility = View.VISIBLE
                         }
-                        binding.emptyStateMessage.visibility = View.VISIBLE
                     } else {
-                        // Fallback si el documento del usuario no existe
-                        binding.emptyStateMessage.text = "Error al cargar datos del usuario."
                         binding.emptyStateMessage.visibility = View.VISIBLE
+                        binding.mainContentGroup?.visibility = View.GONE
                     }
                 }
                 .addOnFailureListener {
-                    binding.emptyStateMessage.text = "Error de conexión. Inténtalo de nuevo."
+                    binding.emptyStateMessage.text = "Error de conexión"
                     binding.emptyStateMessage.visibility = View.VISIBLE
+                    binding.mainContentGroup?.visibility = View.GONE
                 }
         }
     }

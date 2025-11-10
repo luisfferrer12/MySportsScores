@@ -6,11 +6,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.ArrayAdapter
+import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.Spinner
 import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,6 +31,7 @@ import androidx.navigation.ui.setupWithNavController
 import com.fermundev.mysportsscores.databinding.ActivityHomeBinding
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.Firebase
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FieldValue
@@ -140,7 +145,140 @@ class HomeActivity : AppCompatActivity() {
         }
         return super.onOptionsItemSelected(item)
     }
+    
+    private fun setupFabMenu() {
+        binding.appBarHome.fabOverlay?.setOnClickListener { closeFabMenu() }
+        closeFabMenu()
+        binding.appBarHome.fab?.setOnClickListener {
+            if (!isFabMenuOpen) showFabMenu() else closeFabMenu()
+        }
+        binding.appBarHome.fabNewSport?.setOnClickListener {
+            showCreateSportDialog()
+            closeFabMenu()
+        }
+        binding.appBarHome.fabAddResult?.setOnClickListener {
+            showAddResultDialog()
+            closeFabMenu()
+        }
+        // ... otros listeners
+    }
 
+    private fun showAddResultDialog() {
+        if (currentUserEmail == null) return
+
+        val userDocRef = db.collection("users").document(currentUserEmail!!)
+        userDocRef.get().addOnSuccessListener { document ->
+            val activeSport = document.getString("grupoActivo")
+            if (activeSport.isNullOrEmpty()) {
+                Toast.makeText(this, "Selecciona un deporte activo primero", Toast.LENGTH_SHORT).show()
+                return@addOnSuccessListener
+            }
+
+            val sportDocRef = userDocRef.collection("Deportes").document(activeSport)
+            val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_result, null)
+            val player1Spinner = dialogView.findViewById<Spinner>(R.id.player1_spinner)
+            val player2Spinner = dialogView.findViewById<Spinner>(R.id.player2_spinner)
+            val player1Points = dialogView.findViewById<EditText>(R.id.player1_points_edittext)
+            val player2Points = dialogView.findViewById<EditText>(R.id.player2_points_edittext)
+            val addPlayerButton = dialogView.findViewById<Button>(R.id.add_player_button)
+            val newPlayerEditText = dialogView.findViewById<EditText>(R.id.new_player_name_edittext)
+            val saveButton = dialogView.findViewById<Button>(R.id.save_button)
+            val cancelButton = dialogView.findViewById<Button>(R.id.cancel_button)
+
+            fun populateSpinners() {
+                sportDocRef.get().addOnSuccessListener { sportDoc ->
+                    val players = sportDoc.get("jugadores") as? List<String> ?: emptyList()
+                    val spinnerItems = if (players.isEmpty()) listOf("Crea un nuevo jugador") else players
+                    val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, spinnerItems)
+                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                    player1Spinner.adapter = adapter
+                    player2Spinner.adapter = adapter
+                }
+            }
+
+            populateSpinners()
+
+            val dialog = AlertDialog.Builder(this)
+                .setView(dialogView)
+                .setTitle("Añadir Resultado")
+                .create()
+
+            saveButton.setOnClickListener {
+                val p1 = player1Spinner.selectedItem.toString()
+                val p2 = player2Spinner.selectedItem.toString()
+                val p1Points = player1Points.text.toString()
+                val p2Points = player2Points.text.toString()
+
+                if (p1.isNotEmpty() && p2.isNotEmpty() && p1Points.isNotEmpty() && p2Points.isNotEmpty() && p1 != p2 && p1 != "Crea un nuevo jugador") {
+                    saveNewResult(activeSport, p1, p2, p1Points.toInt(), p2Points.toInt())
+                    dialog.dismiss()
+                } else {
+                    Toast.makeText(this, "Completa todos los campos y asegúrate que los jugadores sean diferentes", Toast.LENGTH_LONG).show()
+                }
+            }
+
+            cancelButton.setOnClickListener {
+                dialog.dismiss()
+            }
+
+            addPlayerButton.setOnClickListener {
+                val newPlayerName = newPlayerEditText.text.toString().trim()
+                if (newPlayerName.isNotEmpty()) {
+                    addPlayerToSport(activeSport, newPlayerName) { 
+                        newPlayerEditText.text.clear()
+                        populateSpinners()
+                    }
+                } else {
+                    Toast.makeText(this, "El nombre del jugador no puede estar vacío", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            dialog.show()
+        }
+    }
+
+    private fun saveNewResult(sportName: String, p1: String, p2: String, p1Points: Int, p2Points: Int) {
+        if (currentUserEmail == null) return
+        val sportResultsCol = db.collection("users").document(currentUserEmail!!)
+            .collection("Deportes").document(sportName).collection("Resultados")
+
+        sportResultsCol.get().addOnSuccessListener { querySnapshot ->
+            val matchNumber = querySnapshot.size() + 1
+            val resultId = UUID.randomUUID().toString()
+
+            val resultData = hashMapOf(
+                "jugador1" to p1,
+                "jugador2" to p2,
+                "puntosJugador1" to p1Points,
+                "puntosJugador2" to p2Points,
+                "timestamp" to Timestamp.now(),
+                "uid" to resultId
+            )
+
+            sportResultsCol.document("partido N°$matchNumber").set(resultData)
+                .addOnSuccessListener { 
+                    Toast.makeText(this, "Resultado guardado", Toast.LENGTH_SHORT).show()
+                    navController.navigate(R.id.nav_home) // Recargar para ver cambios
+                 }
+                .addOnFailureListener { e -> Toast.makeText(this, "Error al guardar: ${e.message}", Toast.LENGTH_SHORT).show() }
+        }
+    }
+
+    private fun addPlayerToSport(sportName: String, playerName: String, onSuccess: () -> Unit) {
+        if (currentUserEmail == null) return
+        val sportDocRef = db.collection("users").document(currentUserEmail!!)
+            .collection("Deportes").document(sportName)
+
+        sportDocRef.update("jugadores", FieldValue.arrayUnion(playerName))
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { 
+                sportDocRef.set(hashMapOf("jugadores" to listOf(playerName)))
+                    .addOnSuccessListener { onSuccess() }
+                    .addOnFailureListener { e2 -> Toast.makeText(this, "Error: ${e2.message}", Toast.LENGTH_SHORT).show() }
+            }
+    }
+
+    // ... (El resto de las funciones no cambian)
     private fun showSelectSportDialog() {
         if (currentUserEmail == null) return
 
@@ -185,32 +323,16 @@ class HomeActivity : AppCompatActivity() {
             }
     }
 
-    private fun setupFabMenu() {
-        binding.appBarHome.fabOverlay?.setOnClickListener { closeFabMenu() }
-        closeFabMenu()
-        binding.appBarHome.fab?.setOnClickListener {
-            if (!isFabMenuOpen) showFabMenu() else closeFabMenu()
-        }
-        binding.appBarHome.fabNewSport?.setOnClickListener {
-            showCreateSportDialog()
-            closeFabMenu()
-        }
-        // ... otros listeners
-    }
-
     private fun showCreateSportDialog() {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Crear Nuevo Deporte")
-
         val container = FrameLayout(this)
         val input = EditText(this)
         input.hint = "Nombre del Deporte"
         container.addView(input)
-
         val padding = (20 * resources.displayMetrics.density).toInt()
         container.setPadding(padding, 0, padding, 0)
         builder.setView(container)
-
         builder.setPositiveButton("Crear") { _, _ ->
             val sportName = input.text.toString().trim()
             if (sportName.isNotEmpty()) {
@@ -234,7 +356,7 @@ class HomeActivity : AppCompatActivity() {
         val sportId = UUID.randomUUID().toString()
 
         db.runBatch { batch ->
-            batch.set(sportDocRef, hashMapOf("idDeporte" to sportId))
+            batch.set(sportDocRef, hashMapOf("idDeporte" to sportId, "jugadores" to emptyList<String>()))
             batch.update(userDocRef, "listaDeportes", FieldValue.arrayUnion(sportName))
         }.addOnSuccessListener {
             Toast.makeText(this, "Deporte '$sportName' creado con éxito", Toast.LENGTH_SHORT).show()
@@ -261,6 +383,7 @@ class HomeActivity : AppCompatActivity() {
         isFabMenuOpen = true
         binding.appBarHome.fabOverlay?.visibility = View.VISIBLE
         binding.appBarHome.fabOverlay?.isClickable = true
+        // ... (resto del código de showFabMenu)
         binding.appBarHome.fabNewSport?.visibility = View.VISIBLE
         binding.appBarHome.fabNewGroup?.visibility = View.VISIBLE
         binding.appBarHome.fabAddResult?.visibility = View.VISIBLE
@@ -293,6 +416,7 @@ class HomeActivity : AppCompatActivity() {
         isFabMenuOpen = false
         binding.appBarHome.fabOverlay?.visibility = View.GONE
         binding.appBarHome.fabOverlay?.isClickable = false
+        // ... (resto del código de closeFabMenu)
         binding.appBarHome.fab?.animate()?.rotation(0f)
         binding.appBarHome.fabNewSport?.animate()?.translationY(0f)
         binding.appBarHome.labelNewSport?.animate()?.translationY(0f)
