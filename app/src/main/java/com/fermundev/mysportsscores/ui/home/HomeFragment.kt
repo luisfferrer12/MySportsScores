@@ -4,101 +4,63 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
-import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
-import androidx.recyclerview.widget.RecyclerView
-import com.fermundev.mysportsscores.R
 import com.fermundev.mysportsscores.databinding.FragmentHomeBinding
-import com.fermundev.mysportsscores.databinding.ItemTransformBinding
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
-/**
- * Fragment that demonstrates a responsive layout pattern where the format of the content
- * transforms depending on the size of the screen. Specifically this Fragment shows items in
- * the [RecyclerView] using LinearLayoutManager in a small screen
- * and shows items using GridLayoutManager in a large screen.
- */
 class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
-
-    // This property is only valid between onCreateView and
-    // onDestroyView.
     private val binding get() = _binding!!
+
+    private val db = FirebaseFirestore.getInstance()
+    private val user = FirebaseAuth.getInstance().currentUser
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val homeViewModel = ViewModelProvider(this).get(HomeViewModel::class.java)
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        val recyclerView = binding.recyclerviewTransform
-        val adapter = TransformAdapter()
-        recyclerView.adapter = adapter
-        homeViewModel.texts.observe(viewLifecycleOwner) {
-            adapter.submitList(it)
-        }
+        loadActiveGroupData()
+
         return root
+    }
+
+    private fun loadActiveGroupData() {
+        binding.recyclerviewTransform.visibility = View.GONE
+
+        user?.email?.let {
+            db.collection("users").document(it).get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        val activeGroup = document.getString("grupoActivo")
+
+                        if (activeGroup.isNullOrEmpty()) {
+                            binding.emptyStateMessage.text = "Aún no tienes deportes registrados para ver tus resultados"
+                        } else {
+                            binding.emptyStateMessage.text = "Tienes seleccionado: $activeGroup"
+                            // TODO: Aquí irá la lógica para cargar los datos del podium en el RecyclerView
+                        }
+                        binding.emptyStateMessage.visibility = View.VISIBLE
+                    } else {
+                        // Fallback si el documento del usuario no existe
+                        binding.emptyStateMessage.text = "Error al cargar datos del usuario."
+                        binding.emptyStateMessage.visibility = View.VISIBLE
+                    }
+                }
+                .addOnFailureListener {
+                    binding.emptyStateMessage.text = "Error de conexión. Inténtalo de nuevo."
+                    binding.emptyStateMessage.visibility = View.VISIBLE
+                }
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    class TransformAdapter :
-        ListAdapter<String, TransformViewHolder>(object : DiffUtil.ItemCallback<String>() {
-
-            override fun areItemsTheSame(oldItem: String, newItem: String): Boolean =
-                oldItem == newItem
-
-            override fun areContentsTheSame(oldItem: String, newItem: String): Boolean =
-                oldItem == newItem
-        }) {
-
-        private val drawables = listOf(
-            R.drawable.avatar_1,
-            R.drawable.avatar_2,
-            R.drawable.avatar_3,
-            R.drawable.avatar_4,
-            R.drawable.avatar_5,
-            R.drawable.avatar_6,
-            R.drawable.avatar_7,
-            R.drawable.avatar_8,
-            R.drawable.avatar_9,
-            R.drawable.avatar_10,
-            R.drawable.avatar_11,
-            R.drawable.avatar_12,
-            R.drawable.avatar_13,
-            R.drawable.avatar_14,
-            R.drawable.avatar_15,
-            R.drawable.avatar_16,
-        )
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TransformViewHolder {
-            val binding = ItemTransformBinding.inflate(LayoutInflater.from(parent.context))
-            return TransformViewHolder(binding)
-        }
-
-        override fun onBindViewHolder(holder: TransformViewHolder, position: Int) {
-            holder.textView.text = getItem(position)
-            holder.imageView.setImageDrawable(
-                ResourcesCompat.getDrawable(holder.imageView.resources, drawables[position], null)
-            )
-        }
-    }
-
-    class TransformViewHolder(binding: ItemTransformBinding) :
-        RecyclerView.ViewHolder(binding.root) {
-
-        val imageView: ImageView = binding.imageViewItemTransform
-        val textView: TextView = binding.textViewItemTransform
     }
 }

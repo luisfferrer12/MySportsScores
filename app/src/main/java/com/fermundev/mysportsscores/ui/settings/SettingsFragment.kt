@@ -1,26 +1,21 @@
 package com.fermundev.mysportsscores.ui.settings
 
-import android.Manifest
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
-import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
@@ -41,27 +36,13 @@ class SettingsFragment : Fragment() {
     private val storage = FirebaseStorage.getInstance()
     private var provider: String? = null
 
+    // Variables para guardar los cambios pendientes
     private var newUsername = ""
     private var newPassword = ""
     private var newProfileImageUri: Uri? = null
-    private var notificationsStatus = false
+    private var notificationsStatus = true
 
     private var loadingDialog: AlertDialog? = null
-
-    // Lanzador para solicitar el permiso de notificaciones
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            // El usuario concedió el permiso. Ahora sí, activamos el switch.
-            binding.notificationsSwitch.isChecked = true
-            notificationsStatus = true
-            Toast.makeText(requireContext(), "Permiso concedido. Notificaciones activadas.", Toast.LENGTH_SHORT).show()
-        } else {
-            // El usuario denegó el permiso. El switch permanece desactivado.
-            Toast.makeText(requireContext(), "Permiso denegado. No recibirás notificaciones.", Toast.LENGTH_LONG).show()
-        }
-    }
 
     private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
@@ -69,21 +50,19 @@ class SettingsFragment : Fragment() {
             newProfileImageUri = it
         }
     }
-
+    
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentSettingsBinding.inflate(inflater, container, false)
-
         val prefs = requireActivity().getSharedPreferences(getString(R.string.prefs_file), Context.MODE_PRIVATE)
         provider = prefs.getString("provider", null)
 
         rechargeUserInfo()
         setupNotificationsSwitch()
         setupProfileImageListeners()
-        setupGroupSpinner()
         setupAccountSection()
         setupActionButtons()
 
@@ -99,17 +78,16 @@ class SettingsFragment : Fragment() {
                         val nickName = document.getString("nickName") ?: ""
                         binding.welcomeTextView.text = "Hola, $nickName"
 
-                        // Comprobar tanto el permiso del sistema como el guardado en la BD
-                        val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-                        } else { true }
-                        notificationsStatus = document.getBoolean("notificaciones") ?: false
-                        binding.notificationsSwitch.isChecked = notificationsStatus && hasPermission
+                        notificationsStatus = document.getBoolean("notificaciones") ?: true
+                        binding.notificationsSwitch.isChecked = notificationsStatus
 
                         val imageUrl = document.getString("profileImageUrl")
                         if (!imageUrl.isNullOrEmpty()) {
                             Glide.with(this).load(imageUrl).placeholder(R.drawable.avatar_1).error(R.drawable.avatar_1).circleCrop().into(binding.profileImageView)
                         }
+
+                        val activeGroup = document.getString("grupoActivo")
+                        binding.activeSportTextView.text = if (activeGroup.isNullOrEmpty()) "Ninguno" else activeGroup
                     }
                     showLoadingDialog(false)
                 }
@@ -117,59 +95,6 @@ class SettingsFragment : Fragment() {
                     showLoadingDialog(false)
                     Toast.makeText(requireContext(), "Error al cargar los datos", Toast.LENGTH_SHORT).show()
                 }
-        }
-    }
-
-    private fun setupNotificationsSwitch() {
-        binding.notificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                // El usuario quiere ACTIVAR las notificaciones
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    when {
-                        ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED -> {
-                            // Ya tenemos permiso, solo actualizamos el estado
-                            notificationsStatus = true
-                        }
-                        shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
-                           // El usuario ya lo ha denegado antes. Explicar por qué lo necesitamos.
-                            AlertDialog.Builder(requireContext())
-                                .setTitle("Permiso de Notificaciones")
-                                .setMessage("Para recibir alertas de tus deportes, necesitamos que nos des permiso para enviarte notificaciones.")
-                                .setPositiveButton("Solicitar de nuevo") { _, _ -> requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
-                                .setNegativeButton("Cancelar", null)
-                                .show()
-                           binding.notificationsSwitch.isChecked = false // Revertir el estado visual
-                        }
-                        else -> {
-                            // Pedir permiso por primera vez
-                            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            binding.notificationsSwitch.isChecked = false // Revertir el estado visual
-                        }
-                    }
-                } else {
-                    // Para versiones antiguas de Android, no se necesita permiso
-                    notificationsStatus = true
-                }
-            } else {
-                // El usuario quiere DESACTIVAR las notificaciones
-                notificationsStatus = false
-            }
-        }
-    }
-
-    private fun showLoadingDialog(show: Boolean) {
-        if (show) {
-            if (loadingDialog == null) {
-                val builder = AlertDialog.Builder(requireContext())
-                val progressBar = ProgressBar(requireContext())
-                builder.setView(progressBar)
-                builder.setCancelable(false)
-                loadingDialog = builder.create()
-                loadingDialog?.window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
-            }
-            loadingDialog?.show()
-        } else {
-            loadingDialog?.dismiss()
         }
     }
 
@@ -228,17 +153,30 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ... (El resto de las funciones no cambian)
+    // ... (el resto del código permanece igual)
+    private fun showLoadingDialog(show: Boolean) {
+        if (show) {
+            if (loadingDialog == null) {
+                val builder = AlertDialog.Builder(requireContext())
+                val progressBar = ProgressBar(requireContext())
+                builder.setView(progressBar)
+                builder.setCancelable(false)
+                loadingDialog = builder.create()
+                loadingDialog?.window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+            }
+            loadingDialog?.show()
+        } else {
+            loadingDialog?.dismiss()
+        }
+    }
     private fun setupProfileImageListeners() {
         binding.editProfileIcon.setOnClickListener { galleryLauncher.launch("image/*") }
         binding.profileImageView.setOnClickListener { showImageFullScreen() }
     }
-
-    private fun setupGroupSpinner() {
-        val groupItems = listOf("Selecciona un grupo")
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, groupItems)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.groupSpinner.adapter = adapter
+    private fun setupNotificationsSwitch() {
+        binding.notificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
+            notificationsStatus = isChecked
+        }
     }
 
     private fun setupAccountSection() {

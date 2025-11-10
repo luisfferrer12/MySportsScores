@@ -60,26 +60,27 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/profileImageView" />
 
-        <!-- Group -->
+        <!-- Active Sport -->
         <TextView
-            android:id="@+id/groupLabel"
+            android:id="@+id/activeSportLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Grupo Activo"
+            android:text="Deporte Activo"
             android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/divider1" />
 
-        <Spinner
-            android:id="@+id/groupSpinner"
-            style="@style/Widget.AppCompat.Spinner.Underlined"
+        <TextView
+            android:id="@+id/activeSportTextView"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
+            android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/groupLabel" />
+            app:layout_constraintTop_toBottomOf="@id/activeSportLabel"
+            tools:text="Fútbol" />
 
         <!-- Notifications -->
         <com.google.android.material.switchmaterial.SwitchMaterial
@@ -91,7 +92,7 @@
             android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/groupSpinner" />
+            app:layout_constraintTop_toBottomOf="@id/activeSportTextView" />
 
         <!-- Account Section -->
         <TextView
