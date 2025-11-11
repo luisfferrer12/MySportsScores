@@ -119,7 +119,7 @@ class HomeActivity : AppCompatActivity() {
                 navController.navigate(R.id.nav_settings)
                 return true
             }
-            R.id.logOutButton -> {
+            R.id.logOutButton -> { 
                 AlertDialog.Builder(this)
                     .setTitle("Cerrar Sesión")
                     .setMessage("¿Seguro que deseas cerrar sesión?")
@@ -134,7 +134,7 @@ class HomeActivity : AppCompatActivity() {
                     .setNegativeButton("Cancelar", null)
                     .show()
                 return true
-            }
+             }
             R.id.my_sports -> {
                 showSelectSportDialog()
                 return true
@@ -160,7 +160,6 @@ class HomeActivity : AppCompatActivity() {
             showAddResultDialog()
             closeFabMenu()
         }
-        // ... otros listeners
     }
 
     private fun showAddResultDialog() {
@@ -188,7 +187,7 @@ class HomeActivity : AppCompatActivity() {
             fun populateSpinners() {
                 sportDocRef.get().addOnSuccessListener { sportDoc ->
                     val players = sportDoc.get("jugadores") as? List<String> ?: emptyList()
-                    val spinnerItems = if (players.isEmpty()) listOf("Crea un nuevo jugador") else players
+                    val spinnerItems = if (players.isEmpty()) listOf("Crea un nuevo jugador") else listOf("Selecciona un jugador") + players
                     val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, spinnerItems)
                     adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                     player1Spinner.adapter = adapter
@@ -206,20 +205,21 @@ class HomeActivity : AppCompatActivity() {
             saveButton.setOnClickListener {
                 val p1 = player1Spinner.selectedItem.toString()
                 val p2 = player2Spinner.selectedItem.toString()
-                val p1Points = player1Points.text.toString()
-                val p2Points = player2Points.text.toString()
+                val p1PointsText = player1Points.text.toString()
+                val p2PointsText = player2Points.text.toString()
 
-                if (p1.isNotEmpty() && p2.isNotEmpty() && p1Points.isNotEmpty() && p2Points.isNotEmpty() && p1 != p2 && p1 != "Crea un nuevo jugador") {
-                    saveNewResult(activeSport, p1, p2, p1Points.toInt(), p2Points.toInt())
+                if (p1.isNotEmpty() && p1 != "Crea un nuevo jugador" && p1 != "Selecciona un jugador" &&
+                    p2.isNotEmpty() && p2 != "Crea un nuevo jugador" && p2 != "Selecciona un jugador" &&
+                    p1PointsText.isNotEmpty() && p2PointsText.isNotEmpty() && p1 != p2) {
+                    
+                    saveNewResult(activeSport, p1, p2, p1PointsText.toInt(), p2PointsText.toInt())
                     dialog.dismiss()
                 } else {
                     Toast.makeText(this, "Completa todos los campos y asegúrate que los jugadores sean diferentes", Toast.LENGTH_LONG).show()
                 }
             }
 
-            cancelButton.setOnClickListener {
-                dialog.dismiss()
-            }
+            cancelButton.setOnClickListener { dialog.dismiss() }
 
             addPlayerButton.setOnClickListener {
                 val newPlayerName = newPlayerEditText.text.toString().trim()
@@ -239,28 +239,45 @@ class HomeActivity : AppCompatActivity() {
 
     private fun saveNewResult(sportName: String, p1: String, p2: String, p1Points: Int, p2Points: Int) {
         if (currentUserEmail == null) return
-        val sportResultsCol = db.collection("users").document(currentUserEmail!!)
-            .collection("Deportes").document(sportName).collection("Resultados")
+        
+        val sportDocRef = db.collection("users").document(currentUserEmail!!)
+            .collection("Deportes").document(sportName)
+        val resultsColRef = sportDocRef.collection("Resultados")
 
-        sportResultsCol.get().addOnSuccessListener { querySnapshot ->
+        // 1. Leer primero para obtener el número de partidos
+        resultsColRef.get().addOnSuccessListener { querySnapshot ->
             val matchNumber = querySnapshot.size() + 1
             val resultId = UUID.randomUUID().toString()
+            val newResultDoc = resultsColRef.document("partido N°$matchNumber")
 
-            val resultData = hashMapOf(
-                "jugador1" to p1,
-                "jugador2" to p2,
-                "puntosJugador1" to p1Points,
-                "puntosJugador2" to p2Points,
-                "timestamp" to Timestamp.now(),
-                "uid" to resultId
-            )
+            // 2. Una vez que tenemos los datos, ejecutamos la escritura por lotes
+            db.runBatch { batch ->
+                // Determinar ganador y perdedor
+                val (winner, loser) = if (p1Points > p2Points) p1 to p2 else p2 to p1
 
-            sportResultsCol.document("partido N°$matchNumber").set(resultData)
-                .addOnSuccessListener { 
-                    Toast.makeText(this, "Resultado guardado", Toast.LENGTH_SHORT).show()
-                    navController.navigate(R.id.nav_home) // Recargar para ver cambios
-                 }
-                .addOnFailureListener { e -> Toast.makeText(this, "Error al guardar: ${e.message}", Toast.LENGTH_SHORT).show() }
+                // Actualizar el ranking con incremento atómico
+                batch.update(sportDocRef, "ranking.$winner", FieldValue.increment(3))
+                batch.update(sportDocRef, "ranking.$loser", FieldValue.increment(1))
+                
+                // Crear el nuevo documento de resultado
+                val resultData = hashMapOf(
+                    "jugador1" to p1,
+                    "jugador2" to p2,
+                    "puntosJugador1" to p1Points,
+                    "puntosJugador2" to p2Points,
+                    "timestamp" to Timestamp.now(),
+                    "uid" to resultId
+                )
+                batch.set(newResultDoc, resultData)
+
+            }.addOnSuccessListener {
+                Toast.makeText(this, "Resultado guardado y ranking actualizado", Toast.LENGTH_SHORT).show()
+                navController.navigate(R.id.nav_home)
+            }.addOnFailureListener { e ->
+                Toast.makeText(this, "Error al guardar el resultado: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }.addOnFailureListener { e ->
+            Toast.makeText(this, "Error al contar los partidos: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -269,16 +286,48 @@ class HomeActivity : AppCompatActivity() {
         val sportDocRef = db.collection("users").document(currentUserEmail!!)
             .collection("Deportes").document(sportName)
 
-        sportDocRef.update("jugadores", FieldValue.arrayUnion(playerName))
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { 
-                sportDocRef.set(hashMapOf("jugadores" to listOf(playerName)))
-                    .addOnSuccessListener { onSuccess() }
-                    .addOnFailureListener { e2 -> Toast.makeText(this, "Error: ${e2.message}", Toast.LENGTH_SHORT).show() }
+        db.runBatch { batch ->
+            batch.update(sportDocRef, "jugadores", FieldValue.arrayUnion(playerName))
+            batch.update(sportDocRef, "ranking.$playerName", 0)
+        }.addOnSuccessListener { 
+            Toast.makeText(this, "Jugador '$playerName' añadido", Toast.LENGTH_SHORT).show()
+            onSuccess()
+        }.addOnFailureListener { e ->
+            // Si falla (ej. el campo ranking no existe), créalo e intenta de nuevo.
+            sportDocRef.update("ranking", emptyMap<String, Int>()).addOnSuccessListener {
+                addPlayerToSport(sportName, playerName, onSuccess) // Reintento
             }
+        }
     }
+    
+    private fun createSportInDatabase(sportName: String) {
+        if (currentUserEmail == null) {
+            Toast.makeText(this, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
+            return
+        }
 
-    // ... (El resto de las funciones no cambian)
+        val userDocRef = db.collection("users").document(currentUserEmail!!)
+        val sportDocRef = userDocRef.collection("Deportes").document(sportName)
+        val sportId = UUID.randomUUID().toString()
+
+        val sportData = hashMapOf(
+            "idDeporte" to sportId,
+            "jugadores" to emptyList<String>(),
+            "ranking" to emptyMap<String, Int>()
+        )
+
+        db.runBatch { batch ->
+            batch.set(sportDocRef, sportData)
+            batch.update(userDocRef, "listaDeportes", FieldValue.arrayUnion(sportName))
+        }.addOnSuccessListener {
+            Toast.makeText(this, "Deporte '$sportName' creado con éxito", Toast.LENGTH_SHORT).show()
+        }.addOnFailureListener { e ->
+            Toast.makeText(this, "Error al crear el deporte: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+    
+    // --- El resto de funciones se mantienen sin cambios ---
+
     private fun showSelectSportDialog() {
         if (currentUserEmail == null) return
 
@@ -344,27 +393,7 @@ class HomeActivity : AppCompatActivity() {
         builder.setNegativeButton("Cancelar", null)
         builder.show()
     }
-
-    private fun createSportInDatabase(sportName: String) {
-        if (currentUserEmail == null) {
-            Toast.makeText(this, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val userDocRef = db.collection("users").document(currentUserEmail!!)
-        val sportDocRef = userDocRef.collection("Deportes").document(sportName)
-        val sportId = UUID.randomUUID().toString()
-
-        db.runBatch { batch ->
-            batch.set(sportDocRef, hashMapOf("idDeporte" to sportId, "jugadores" to emptyList<String>()))
-            batch.update(userDocRef, "listaDeportes", FieldValue.arrayUnion(sportName))
-        }.addOnSuccessListener {
-            Toast.makeText(this, "Deporte '$sportName' creado con éxito", Toast.LENGTH_SHORT).show()
-        }.addOnFailureListener { e ->
-            Toast.makeText(this, "Error al crear el deporte: ${e.message}", Toast.LENGTH_LONG).show()
-        }
-    }
-
+    
     private fun askNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -383,7 +412,6 @@ class HomeActivity : AppCompatActivity() {
         isFabMenuOpen = true
         binding.appBarHome.fabOverlay?.visibility = View.VISIBLE
         binding.appBarHome.fabOverlay?.isClickable = true
-        // ... (resto del código de showFabMenu)
         binding.appBarHome.fabNewSport?.visibility = View.VISIBLE
         binding.appBarHome.fabNewGroup?.visibility = View.VISIBLE
         binding.appBarHome.fabAddResult?.visibility = View.VISIBLE
@@ -416,7 +444,6 @@ class HomeActivity : AppCompatActivity() {
         isFabMenuOpen = false
         binding.appBarHome.fabOverlay?.visibility = View.GONE
         binding.appBarHome.fabOverlay?.isClickable = false
-        // ... (resto del código de closeFabMenu)
         binding.appBarHome.fab?.animate()?.rotation(0f)
         binding.appBarHome.fabNewSport?.animate()?.translationY(0f)
         binding.appBarHome.labelNewSport?.animate()?.translationY(0f)

@@ -6,17 +6,27 @@
     android:layout_height="match_parent"
     tools:context=".ui.results.ResultsFragment">
 
-    <TextView
-        android:id="@+id/text_reflow"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/results_recyclerview"
         android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        tools:listitem="@layout/item_result" />
+
+    <TextView
+        android:id="@+id/empty_results_message"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="8dp"
-        android:textAlignment="center"
-        android:textSize="20sp"
+        android:text="No hay resultados para mostrar"
+        android:textAppearance="?attr/textAppearanceBody1"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
