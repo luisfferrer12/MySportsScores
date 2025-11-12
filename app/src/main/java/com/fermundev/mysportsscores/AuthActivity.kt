@@ -101,7 +101,7 @@ class AuthActivity : AppCompatActivity() {
     }
 
     private fun setUp() {
-        title = "Autenticación"
+        title = getString(R.string.auth_title)
 
         val signUpButton: Button = findViewById(R.id.signUpButton)
         val logInButton: Button = findViewById(R.id.logInButton)
@@ -126,12 +126,12 @@ class AuthActivity : AppCompatActivity() {
                         if (task.isSuccessful) {
                             showHome(task.result?.user?.email ?: "", ProviderType.BASIC)
                         } else {
-                            showAlert("Se ha producido un error al registrar el usuario o ya existe.")
+                            showAlert(getString(R.string.error_generic_auth))
                         }
                     }
             } else {
-                if (email.isEmpty()) emailTextInputLayout.error = "Este campo es obligatorio"
-                if (password.isEmpty()) passwordTextInputLayout.error = "Este campo es obligatorio"
+                if (email.isEmpty()) emailTextInputLayout.error = getString(R.string.error_field_required)
+                if (password.isEmpty()) passwordTextInputLayout.error = getString(R.string.error_field_required)
             }
         }
 
@@ -146,12 +146,12 @@ class AuthActivity : AppCompatActivity() {
                         if (task.isSuccessful) {
                             showHome(task.result?.user?.email ?: "", ProviderType.BASIC)
                         } else {
-                            showAlert("El email y/o la contraseña son incorrectos.")
+                            showAlert(getString(R.string.error_invalid_credentials))
                         }
                     }
             } else {
-                if (email.isEmpty()) emailTextInputLayout.error = "Este campo es obligatorio"
-                if (password.isEmpty()) passwordTextInputLayout.error = "Este campo es obligatorio"
+                if (email.isEmpty()) emailTextInputLayout.error = getString(R.string.error_field_required)
+                if (password.isEmpty()) passwordTextInputLayout.error = getString(R.string.error_field_required)
             }
         }
 
@@ -170,9 +170,9 @@ class AuthActivity : AppCompatActivity() {
 
     private fun showAlert(message: String) {
         AlertDialog.Builder(this)
-            .setTitle("Error")
+            .setTitle(getString(R.string.dialog_title_error))
             .setMessage(message)
-            .setPositiveButton("Aceptar", null)
+            .setPositiveButton(getString(R.string.action_accept), null)
             .show()
     }
 
@@ -237,12 +237,12 @@ class AuthActivity : AppCompatActivity() {
                             if (it.isSuccessful) {
                                 showHome(account.email ?: "", ProviderType.GOOGLE)
                             } else {
-                                showAlert("Error al autenticar con Firebase.")
+                                showAlert(getString(R.string.error_firebase_auth))
                             }
                         }
                 }
             } catch (e: ApiException) {
-                showAlert("Error al obtener los datos de Google.")
+                showAlert(getString(R.string.error_google_auth))
             }
         }
     }

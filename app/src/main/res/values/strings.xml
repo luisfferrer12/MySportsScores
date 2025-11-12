@@ -18,6 +18,16 @@
     <string name="menu_settings">Configuración</string>
     <string name="menu_logOut">Cerrar Sesión</string>
 
+    <!-- Auth Screen -->
+    <string name="auth_title">Autenticación</string>
+    <string name="error_generic_auth">Se ha producido un error al registrar el usuario o ya existe.</string>
+    <string name="error_invalid_credentials">El email y/o la contraseña son incorrectos.</string>
+    <string name="error_field_required">Este campo es obligatorio</string>
+    <string name="error_google_auth">Error al obtener los datos de Google.</string>
+    <string name="error_firebase_auth">Error al autenticar con Firebase.</string>
+    <string name="dialog_title_error">Error</string>
+    <string name="action_accept">Aceptar</string>
+
     <!-- Home Screen -->
     <string name="home_title">Podium</string>
     <string name="exit_prompt">Presiona de nuevo para salir</string>
@@ -58,6 +68,33 @@
     <string name="dialog_message_delete_result">¿Seguro que deseas eliminar este resultado? Esta acción no se puede deshacer y afectará al ranking.</string>
     <string name="success_result_deleted">Resultado eliminado y ranking actualizado</string>
     <string name="error_deleting_result">Error al eliminar: %1$s</string>
+    
+    <!-- Settings Screen -->
+    <string name="welcome_user">Hola, %1$s</string>
+    <string name="active_sport_none">No hay deporte activo</string>
+    <string name="error_loading_user_data">Error al cargar los datos</string>
+    <string name="success_data_saved">Datos guardados con éxito</string>
+    <string name="error_saving_data">Error al guardar los datos: %1$s</string>
+    <string name="error_uploading_profile_image">Error al subir la imagen: %1$s</string>
+    <string name="dialog_title_cancel_settings">Cancelar Ajustes</string>
+    <string name="dialog_message_cancel_settings">¿Seguro que deseas Cancelar los Ajustes?</string>
+    <string name="action_discard">Descartar</string>
+    <string name="action_keep_editing">Seguir Editando</string>
+    <string name="dialog_title_save_settings">Guardar Ajustes</string>
+    <string name="dialog_message_save_settings">¿Seguro que deseas Guardar los nuevos ajustes?</string>
+    <string name="dialog_title_google_password_reset">Cambio de Contraseña (Google)</string>
+    <string name="dialog_message_google_password_reset">Estás autenticado con Google. Para cambiar tu contraseña, te enviaremos un correo de restablecimiento.</string>
+    <string name="action_send_email">Enviar Correo</string>
+    <string name="success_password_reset_email_sent">Correo de restablecimiento enviado a %1$s</string>
+    <string name="error_sending_password_reset_email">Error al enviar el correo: %1$s</string>
+    <string name="dialog_title_edit_username">Editar nombre de usuario</string>
+    <string name="dialog_title_create_new_password">Crea una nueva Contraseña</string>
+    <string name="hint_new_password">Nueva Contraseña</string>
+    <string name="delete_active_sport">Eliminar Deporte Activo</string>
+    <string name="dialog_title_delete_sport">Eliminar Deporte</string>
+    <string name="dialog_message_delete_sport">¿Seguro que deseas eliminar \'%1$s\'? Se borrarán permanentemente todos sus resultados, jugadores, ranking y fotos de la galería. Esta acción no se puede deshacer.</string>
+    <string name="success_sport_deleted">Deporte \'%1$s\' eliminado</string>
+    <string name="error_deleting_sport">Error durante la eliminación: %1$s</string>
 
     <!-- Home Activity Dialogs & Toasts -->
     <string name="dialog_title_logout">Cerrar Sesión</string>
