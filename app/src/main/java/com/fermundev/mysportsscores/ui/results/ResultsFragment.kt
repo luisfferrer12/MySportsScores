@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.fermundev.mysportsscores.R
 import com.fermundev.mysportsscores.databinding.FragmentResultsBinding
 import com.fermundev.mysportsscores.databinding.ItemResultBinding
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
@@ -61,6 +62,7 @@ class ResultsFragment : Fragment() {
     private fun loadResults() {
         user?.email?.let { email ->
             db.collection("users").document(email).get().addOnSuccessListener { userDoc ->
+                if (_binding == null) return@addOnSuccessListener // Safety check
                 activeSport = userDoc.getString("grupoActivo")
                 if (activeSport.isNullOrEmpty()) {
                     showEmptyState("No has seleccionado un deporte activo.")
@@ -73,6 +75,7 @@ class ResultsFragment : Fragment() {
                     .orderBy("timestamp", Query.Direction.DESCENDING)
                     .get()
                     .addOnSuccessListener { resultsSnapshot ->
+                        if (_binding == null) return@addOnSuccessListener // Safety check
                         if (resultsSnapshot.isEmpty) {
                             showEmptyState("No hay resultados para este deporte.")
                         } else {
@@ -81,7 +84,10 @@ class ResultsFragment : Fragment() {
                             resultsAdapter.updateData(resultsSnapshot.documents)
                         }
                     }
-                    .addOnFailureListener { showEmptyState("Error al cargar resultados.") }
+                    .addOnFailureListener { 
+                        if (_binding == null) return@addOnFailureListener
+                        showEmptyState("Error al cargar resultados.") 
+                    }
             }
         }
     }
@@ -92,6 +98,7 @@ class ResultsFragment : Fragment() {
         val sportDocRef = db.collection("users").document(user.email!!).collection("Deportes").document(activeSport!!)
         
         sportDocRef.get().addOnSuccessListener { sportDoc ->
+            if (_binding == null) return@addOnSuccessListener // Safety check
             val players = sportDoc.get("jugadores") as? List<String> ?: emptyList()
             if (players.isEmpty()) {
                 Toast.makeText(context, "No hay jugadores en este deporte.", Toast.LENGTH_SHORT).show()
@@ -103,18 +110,14 @@ class ResultsFragment : Fragment() {
             val player2Spinner = dialogView.findViewById<Spinner>(R.id.player2_spinner)
             val player1Points = dialogView.findViewById<EditText>(R.id.player1_points_edittext)
             val player2Points = dialogView.findViewById<EditText>(R.id.player2_points_edittext)
-            dialogView.findViewById<View>(R.id.add_player_button).visibility = View.GONE // Ocultar al editar
-            dialogView.findViewById<View>(R.id.new_player_name_edittext).visibility = View.GONE
             val saveButton = dialogView.findViewById<Button>(R.id.save_button)
             val cancelButton = dialogView.findViewById<Button>(R.id.cancel_button)
 
-            // Poblar spinners
             val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, players)
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             player1Spinner.adapter = adapter
             player2Spinner.adapter = adapter
 
-            // Pre-llenar datos del resultado a editar
             val oldP1 = result.getString("jugador1")
             val oldP2 = result.getString("jugador2")
             val oldP1Points = result.getLong("puntosJugador1")
@@ -137,7 +140,7 @@ class ResultsFragment : Fragment() {
                 val newP2Points = player2Points.text.toString().toLongOrNull()
 
                 if (newP1 != newP2 && newP1Points != null && newP2Points != null) {
-                    updateResult(result, oldP1!!, oldP2!!, oldP1Points!!, oldP2Points!!, newP1, newP2, newP1Points, newP2Points)
+                    updateResult(result, players, oldP1!!, oldP2!!, oldP1Points!!, oldP2Points!!, newP1, newP2, newP1Points, newP2Points)
                     dialog.dismiss()
                 } else {
                     Toast.makeText(context, "Datos inválidos", Toast.LENGTH_SHORT).show()
@@ -151,41 +154,39 @@ class ResultsFragment : Fragment() {
 
     private fun updateResult(
         result: DocumentSnapshot, 
+        officialPlayers: List<String>,
         oldP1: String, oldP2: String, oldP1Points: Long, oldP2Points: Long, 
         newP1: String, newP2: String, newP1Points: Long, newP2Points: Long
     ) {
         val sportDocRef = result.reference.parent.parent!!
         val pointChanges = mutableMapOf<String, Long>()
 
-        // 1. Revertir puntos antiguos
         val (oldWinner, oldLoser) = if (oldP1Points > oldP2Points) oldP1 to oldP2 else oldP2 to oldP1
-        pointChanges[oldWinner] = (pointChanges[oldWinner] ?: 0) - 3
-        pointChanges[oldLoser] = (pointChanges[oldLoser] ?: 0) - 1
+        if (officialPlayers.contains(oldWinner)) {
+            pointChanges[oldWinner] = (pointChanges[oldWinner] ?: 0) - 3
+        }
+        if (officialPlayers.contains(oldLoser)) {
+            pointChanges[oldLoser] = (pointChanges[oldLoser] ?: 0) - 1
+        }
 
-        // 2. Aplicar puntos nuevos
         val (newWinner, newLoser) = if (newP1Points > newP2Points) newP1 to newP2 else newP2 to newP1
         pointChanges[newWinner] = (pointChanges[newWinner] ?: 0) + 3
         pointChanges[newLoser] = (pointChanges[newLoser] ?: 0) + 1
 
         db.runBatch { batch ->
-            // 3. Actualizar el ranking
             for ((player, change) in pointChanges) {
-                if (change != 0L) {
+                if (change != 0L && officialPlayers.contains(player)) {
                     batch.update(sportDocRef, "ranking.$player", FieldValue.increment(change))
                 }
             }
-            // 4. Actualizar el documento del resultado
-            val newResultData = mapOf(
-                "jugador1" to newP1,
-                "jugador2" to newP2,
-                "puntosJugador1" to newP1Points,
-                "puntosJugador2" to newP2Points
-            )
+            val newResultData = mapOf("jugador1" to newP1, "jugador2" to newP2, "puntosJugador1" to newP1Points, "puntosJugador2" to newP2Points)
             batch.update(result.reference, newResultData)
         }.addOnSuccessListener {
+            if (_binding == null) return@addOnSuccessListener
             Toast.makeText(context, "Resultado actualizado", Toast.LENGTH_SHORT).show()
             loadResults()
         }.addOnFailureListener { e ->
+            if (_binding == null) return@addOnFailureListener
             Toast.makeText(context, "Error al actualizar: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
@@ -202,30 +203,37 @@ class ResultsFragment : Fragment() {
     }
 
     private fun deleteResult(result: DocumentSnapshot) {
-        val p1 = result.getString("jugador1") ?: return
-        val p2 = result.getString("jugador2") ?: return
-        val p1Points = result.getLong("puntosJugador1") ?: 0
-        val p2Points = result.getLong("puntosJugador2") ?: 0
-
-        val (winner, loser) = if (p1Points > p2Points) p1 to p2 else p2 to p1
-        
         if (user?.email == null || activeSport == null) return
 
-        val sportDocRef = db.collection("users").document(user.email!!)
-            .collection("Deportes").document(activeSport!!)
+        val sportDocRef = db.collection("users").document(user.email!!).collection("Deportes").document(activeSport!!)
+        
+        sportDocRef.get().addOnSuccessListener { sportDoc ->
+            if (_binding == null) return@addOnSuccessListener
+            val officialPlayers = sportDoc.get("jugadores") as? List<String> ?: emptyList()
 
-        db.runBatch { batch ->
-            // 1. Revertir puntos en el ranking
-            batch.update(sportDocRef, "ranking.$winner", FieldValue.increment(-3))
-            batch.update(sportDocRef, "ranking.$loser", FieldValue.increment(-1))
+            val p1 = result.getString("jugador1") ?: return@addOnSuccessListener
+            val p2 = result.getString("jugador2") ?: return@addOnSuccessListener
+            val p1Points = result.getLong("puntosJugador1") ?: 0
+            val p2Points = result.getLong("puntosJugador2") ?: 0
 
-            // 2. Eliminar el documento del resultado
-            batch.delete(result.reference)
-        }.addOnSuccessListener {
-            Toast.makeText(requireContext(), "Resultado eliminado y ranking actualizado", Toast.LENGTH_SHORT).show()
-            loadResults() // Recargar la lista
-        }.addOnFailureListener { e ->
-            Toast.makeText(requireContext(), "Error al eliminar: ${e.message}", Toast.LENGTH_LONG).show()
+            val (winner, loser) = if (p1Points > p2Points) p1 to p2 else p2 to p1
+
+            db.runBatch { batch ->
+                if (officialPlayers.contains(winner)) {
+                    batch.update(sportDocRef, "ranking.$winner", FieldValue.increment(-3))
+                }
+                if (officialPlayers.contains(loser)) {
+                    batch.update(sportDocRef, "ranking.$loser", FieldValue.increment(-1))
+                }
+                batch.delete(result.reference)
+            }.addOnSuccessListener {
+                if (_binding == null) return@addOnSuccessListener
+                Toast.makeText(requireContext(), "Resultado eliminado y ranking actualizado", Toast.LENGTH_SHORT).show()
+                loadResults()
+            }.addOnFailureListener { e ->
+                if (_binding == null) return@addOnFailureListener
+                Toast.makeText(requireContext(), "Error al eliminar: ${e.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 

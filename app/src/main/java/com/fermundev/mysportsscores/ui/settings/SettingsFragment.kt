@@ -71,9 +71,10 @@ class SettingsFragment : Fragment() {
 
     private fun rechargeUserInfo() {
         showLoadingDialog(true)
-        user?.email?.let {
-            db.collection("users").document(it).get()
+        user?.email?.let { email ->
+            db.collection("users").document(email).get()
                 .addOnSuccessListener { document ->
+                    if (_binding == null) return@addOnSuccessListener
                     if (document != null && document.exists()) {
                         val nickName = document.getString("nickName") ?: ""
                         binding.welcomeTextView.text = "Hola, $nickName"
@@ -92,6 +93,7 @@ class SettingsFragment : Fragment() {
                     showLoadingDialog(false)
                 }
                 .addOnFailureListener {
+                    if (_binding == null) return@addOnFailureListener
                     showLoadingDialog(false)
                     Toast.makeText(requireContext(), "Error al cargar los datos", Toast.LENGTH_SHORT).show()
                 }
@@ -117,11 +119,13 @@ class SettingsFragment : Fragment() {
                 if (updates.isNotEmpty()) {
                     db.collection("users").document(email).update(updates)
                         .addOnSuccessListener {
+                            if (_binding == null) return@addOnSuccessListener
                             showLoadingDialog(false)
                             Toast.makeText(requireContext(), "Datos guardados con éxito", Toast.LENGTH_SHORT).show()
                             findNavController().navigateUp()
                         }
                         .addOnFailureListener { e ->
+                            if (_binding == null) return@addOnFailureListener
                             showLoadingDialog(false)
                             Toast.makeText(requireContext(), "Error al guardar los datos: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
@@ -137,7 +141,7 @@ class SettingsFragment : Fragment() {
         }
 
         if (newProfileImageUri != null) {
-            val profileImagesRef = storage.reference.child("MySportsScores/profile_images/${user?.email}/${user?.uid}.jpg")
+            val profileImagesRef = storage.reference.child("MySportsScores/${user?.email}/profile_images/${user?.uid}.jpg")
             profileImagesRef.putFile(newProfileImageUri!!)
                 .addOnSuccessListener { 
                     profileImagesRef.downloadUrl.addOnSuccessListener { downloadUri ->
@@ -145,6 +149,7 @@ class SettingsFragment : Fragment() {
                     }
                 }
                 .addOnFailureListener { e ->
+                    if (_binding == null) return@addOnFailureListener
                     showLoadingDialog(false)
                     Toast.makeText(requireContext(), "Error al subir la imagen: ${e.message}", Toast.LENGTH_LONG).show()
                 }
@@ -153,7 +158,6 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    // ... (el resto del código permanece igual)
     private fun showLoadingDialog(show: Boolean) {
         if (show) {
             if (loadingDialog == null) {
@@ -211,18 +215,11 @@ class SettingsFragment : Fragment() {
     }
 
     private fun showGooglePasswordResetDialog() {
-        AlertDialog.Builder(requireContext())
-            .setTitle("Cambio de Contraseña (Google)")
-            .setMessage("Estás autenticado con Google. Para cambiar tu contraseña, te enviaremos un correo de restablecimiento.")
-            .setPositiveButton("Enviar Correo") { _, _ ->
-                user?.email?.let { email ->
-                    FirebaseAuth.getInstance().sendPasswordResetEmail(email)
-                        .addOnSuccessListener { Toast.makeText(requireContext(), "Correo de restablecimiento enviado a $email", Toast.LENGTH_LONG).show() }
-                        .addOnFailureListener { e -> Toast.makeText(requireContext(), "Error al enviar el correo: ${e.message}", Toast.LENGTH_LONG).show() }
-                }
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
+        user?.email?.let { email ->
+            FirebaseAuth.getInstance().sendPasswordResetEmail(email)
+                .addOnSuccessListener { Toast.makeText(requireContext(), "Correo de restablecimiento enviado a $email", Toast.LENGTH_LONG).show() }
+                .addOnFailureListener { e -> Toast.makeText(requireContext(), "Error al enviar el correo: ${e.message}", Toast.LENGTH_LONG).show() }
+        }
     }
 
     private fun showEditUsernameDialog() {

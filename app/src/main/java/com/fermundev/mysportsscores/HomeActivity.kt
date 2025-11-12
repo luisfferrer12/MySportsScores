@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -21,6 +22,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.content.edit
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
@@ -29,6 +31,7 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.fermundev.mysportsscores.databinding.ActivityHomeBinding
+import com.fermundev.mysportsscores.ui.gallery.GalleryFragment
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
@@ -37,6 +40,8 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.remoteconfig.remoteConfig
+import com.google.firebase.storage.FirebaseStorage
+import java.io.File
 import java.util.UUID
 
 enum class ProviderType{
@@ -53,7 +58,10 @@ class HomeActivity : AppCompatActivity() {
     private var isFabMenuOpen = false
     private val db = FirebaseFirestore.getInstance()
     private var currentUserEmail: String? = null
+    private var sportForNewPhoto: String? = null
+    private var latestTmpUri: Uri? = null
 
+    // --- ActivityResultLaunchers ---
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -63,6 +71,28 @@ class HomeActivity : AppCompatActivity() {
             Toast.makeText(this, "Permisos para notificaciones denegados", Toast.LENGTH_SHORT).show()
             if (currentUserEmail != null) {
                 db.collection("users").document(currentUserEmail!!).update("notificaciones", false)
+            }
+        }
+    }
+
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            startCamera()
+        } else {
+            Toast.makeText(this, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val takePictureLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { isSuccess: Boolean ->
+        if (isSuccess) {
+            latestTmpUri?.let { uri ->
+                sportForNewPhoto?.let { sportName ->
+                    uploadImageToGallery(uri, sportName)
+                }
             }
         }
     }
@@ -87,14 +117,24 @@ class HomeActivity : AppCompatActivity() {
         val navHostFragment = (supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_home) as NavHostFragment?)!!
         navController = navHostFragment.navController
 
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            binding.appBarHome.fab?.let {
+                if (destination.id == R.id.nav_players) {
+                    it.visibility = View.GONE
+                } else {
+                    it.visibility = View.VISIBLE
+                }
+            }
+        }
+
         binding.navView?.let {
-            appBarConfiguration = AppBarConfiguration(setOf(R.id.nav_home, R.id.nav_results, R.id.nav_gallery), binding.drawerLayout)
+            appBarConfiguration = AppBarConfiguration(setOf(R.id.nav_home, R.id.nav_results, R.id.nav_players, R.id.nav_gallery), binding.drawerLayout)
             setupActionBarWithNavController(navController, appBarConfiguration)
             it.setupWithNavController(navController)
         }
 
         binding.appBarHome.contentHome.bottomNavView?.let {
-            appBarConfiguration = AppBarConfiguration(setOf(R.id.nav_home, R.id.nav_results, R.id.nav_gallery))
+            appBarConfiguration = AppBarConfiguration(setOf(R.id.nav_home, R.id.nav_results, R.id.nav_players, R.id.nav_gallery))
             setupActionBarWithNavController(navController, appBarConfiguration)
             it.setupWithNavController(navController)
         }
@@ -111,6 +151,26 @@ class HomeActivity : AppCompatActivity() {
                 navController.navigateUp()
             }
         }
+    }
+    
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        val navView: NavigationView? = findViewById(R.id.nav_view)
+        if (navView == null) {
+            menuInflater.inflate(R.menu.overflow, menu)
+            val errorButton = menu.findItem(R.id.errorButton)
+            errorButton.isVisible = false
+            Firebase.remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val showErrorButton = Firebase.remoteConfig.getBoolean("show_error_button")
+                    val newButtonText = Firebase.remoteConfig.getString("error_button_text")
+                    if (showErrorButton) {
+                        errorButton.isVisible = true
+                    }
+                    errorButton.title = newButtonText
+                }
+            }
+        }
+        return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -160,8 +220,85 @@ class HomeActivity : AppCompatActivity() {
             showAddResultDialog()
             closeFabMenu()
         }
+        binding.appBarHome.fabTakePhoto?.setOnClickListener {
+            startPhotoProcess()
+            closeFabMenu()
+        }
     }
 
+    private fun startPhotoProcess() {
+        if (currentUserEmail == null) return
+        db.collection("users").document(currentUserEmail!!).get().addOnSuccessListener { userDoc ->
+            val activeSport = userDoc.getString("grupoActivo")
+            if (activeSport.isNullOrEmpty()) {
+                Toast.makeText(this, "Selecciona un deporte activo para guardar la foto", Toast.LENGTH_LONG).show()
+            } else {
+                sportForNewPhoto = activeSport
+                handleTakePictureClick()
+            }
+        }
+    }
+
+    private fun handleTakePictureClick() {
+        when {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED -> {
+                startCamera()
+            }
+            shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Permiso de Cámara")
+                    .setMessage("Para tomar fotos, necesitamos acceso a tu cámara.")
+                    .setPositiveButton("Aceptar") { _, _ -> cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }
+                    .setNegativeButton("Cancelar", null)
+                    .show()
+            }
+            else -> {
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+    }
+
+    private fun startCamera() {
+        getTmpFileUri().let { uri ->
+            latestTmpUri = uri
+            takePictureLauncher.launch(uri)
+        }
+    }
+
+    private fun getTmpFileUri(): Uri {
+        val imagePath = File(cacheDir, "images")
+        imagePath.mkdirs()
+        val tmpFile = File.createTempFile("tmp_image_", ".jpg", imagePath)
+        return FileProvider.getUriForFile(applicationContext, "${packageName}.provider", tmpFile)
+    }
+
+    private fun uploadImageToGallery(uri: Uri, sportName: String) {
+        if (currentUserEmail == null) {
+            Toast.makeText(this, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val storageRef = FirebaseStorage.getInstance().reference
+        val imageFileName = "${UUID.randomUUID()}.jpg"
+        val galleryRef = storageRef.child("MySportsScores/$currentUserEmail/gallery/$sportName/$imageFileName")
+
+        Toast.makeText(this, "Subiendo imagen...", Toast.LENGTH_SHORT).show()
+        galleryRef.putFile(uri)
+            .addOnSuccessListener { 
+                Toast.makeText(this, "¡Foto guardada en la galería de '$sportName'!", Toast.LENGTH_LONG).show()
+                
+                // Refresh gallery if visible
+                val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_home)
+                val currentFragment = navHostFragment?.childFragmentManager?.fragments?.get(0)
+                if (currentFragment is GalleryFragment) {
+                    currentFragment.refreshGallery()
+                }
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Error al subir la imagen: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+    }
+
+    // ... (El resto de las funciones no cambian)
     private fun showAddResultDialog() {
         if (currentUserEmail == null) return
 
@@ -174,66 +311,48 @@ class HomeActivity : AppCompatActivity() {
             }
 
             val sportDocRef = userDocRef.collection("Deportes").document(activeSport)
-            val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_result, null)
-            val player1Spinner = dialogView.findViewById<Spinner>(R.id.player1_spinner)
-            val player2Spinner = dialogView.findViewById<Spinner>(R.id.player2_spinner)
-            val player1Points = dialogView.findViewById<EditText>(R.id.player1_points_edittext)
-            val player2Points = dialogView.findViewById<EditText>(R.id.player2_points_edittext)
-            val addPlayerButton = dialogView.findViewById<Button>(R.id.add_player_button)
-            val newPlayerEditText = dialogView.findViewById<EditText>(R.id.new_player_name_edittext)
-            val saveButton = dialogView.findViewById<Button>(R.id.save_button)
-            val cancelButton = dialogView.findViewById<Button>(R.id.cancel_button)
-
-            fun populateSpinners() {
-                sportDocRef.get().addOnSuccessListener { sportDoc ->
-                    val players = sportDoc.get("jugadores") as? List<String> ?: emptyList()
-                    val spinnerItems = if (players.isEmpty()) listOf("Crea un nuevo jugador") else listOf("Selecciona un jugador") + players
-                    val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, spinnerItems)
-                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                    player1Spinner.adapter = adapter
-                    player2Spinner.adapter = adapter
+            sportDocRef.get().addOnSuccessListener { sportDoc ->
+                val players = sportDoc.get("jugadores") as? List<String> ?: emptyList()
+                if (players.size < 2) {
+                    Toast.makeText(this, "Necesitas al menos 2 jugadores en este deporte para añadir un resultado.", Toast.LENGTH_LONG).show()
+                    return@addOnSuccessListener
                 }
-            }
 
-            populateSpinners()
+                val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_result, null)
+                val player1Spinner = dialogView.findViewById<Spinner>(R.id.player1_spinner)
+                val player2Spinner = dialogView.findViewById<Spinner>(R.id.player2_spinner)
+                val player1Points = dialogView.findViewById<EditText>(R.id.player1_points_edittext)
+                val player2Points = dialogView.findViewById<EditText>(R.id.player2_points_edittext)
+                val saveButton = dialogView.findViewById<Button>(R.id.save_button)
+                val cancelButton = dialogView.findViewById<Button>(R.id.cancel_button)
 
-            val dialog = AlertDialog.Builder(this)
-                .setView(dialogView)
-                .setTitle("Añadir Resultado")
-                .create()
+                val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, players)
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                player1Spinner.adapter = adapter
+                player2Spinner.adapter = adapter
 
-            saveButton.setOnClickListener {
-                val p1 = player1Spinner.selectedItem.toString()
-                val p2 = player2Spinner.selectedItem.toString()
-                val p1PointsText = player1Points.text.toString()
-                val p2PointsText = player2Points.text.toString()
+                val dialog = AlertDialog.Builder(this)
+                    .setView(dialogView)
+                    .setTitle("Añadir Resultado")
+                    .create()
 
-                if (p1.isNotEmpty() && p1 != "Crea un nuevo jugador" && p1 != "Selecciona un jugador" &&
-                    p2.isNotEmpty() && p2 != "Crea un nuevo jugador" && p2 != "Selecciona un jugador" &&
-                    p1PointsText.isNotEmpty() && p2PointsText.isNotEmpty() && p1 != p2) {
-                    
-                    saveNewResult(activeSport, p1, p2, p1PointsText.toInt(), p2PointsText.toInt())
-                    dialog.dismiss()
-                } else {
-                    Toast.makeText(this, "Completa todos los campos y asegúrate que los jugadores sean diferentes", Toast.LENGTH_LONG).show()
-                }
-            }
+                saveButton.setOnClickListener {
+                    val p1 = player1Spinner.selectedItem.toString()
+                    val p2 = player2Spinner.selectedItem.toString()
+                    val p1PointsText = player1Points.text.toString()
+                    val p2PointsText = player2Points.text.toString()
 
-            cancelButton.setOnClickListener { dialog.dismiss() }
-
-            addPlayerButton.setOnClickListener {
-                val newPlayerName = newPlayerEditText.text.toString().trim()
-                if (newPlayerName.isNotEmpty()) {
-                    addPlayerToSport(activeSport, newPlayerName) { 
-                        newPlayerEditText.text.clear()
-                        populateSpinners()
+                    if (p1.isNotEmpty() && p2.isNotEmpty() && p1PointsText.isNotEmpty() && p2PointsText.isNotEmpty() && p1 != p2) {
+                        saveNewResult(activeSport, p1, p2, p1PointsText.toInt(), p2PointsText.toInt())
+                        dialog.dismiss()
+                    } else {
+                        Toast.makeText(this, "Completa todos los campos y asegúrate que los jugadores sean diferentes", Toast.LENGTH_LONG).show()
                     }
-                } else {
-                    Toast.makeText(this, "El nombre del jugador no puede estar vacío", Toast.LENGTH_SHORT).show()
                 }
-            }
 
-            dialog.show()
+                cancelButton.setOnClickListener { dialog.dismiss() }
+                dialog.show()
+            }
         }
     }
 
@@ -244,22 +363,17 @@ class HomeActivity : AppCompatActivity() {
             .collection("Deportes").document(sportName)
         val resultsColRef = sportDocRef.collection("Resultados")
 
-        // 1. Leer primero para obtener el número de partidos
         resultsColRef.get().addOnSuccessListener { querySnapshot ->
             val matchNumber = querySnapshot.size() + 1
             val resultId = UUID.randomUUID().toString()
             val newResultDoc = resultsColRef.document("partido N°$matchNumber")
 
-            // 2. Una vez que tenemos los datos, ejecutamos la escritura por lotes
             db.runBatch { batch ->
-                // Determinar ganador y perdedor
                 val (winner, loser) = if (p1Points > p2Points) p1 to p2 else p2 to p1
 
-                // Actualizar el ranking con incremento atómico
                 batch.update(sportDocRef, "ranking.$winner", FieldValue.increment(3))
                 batch.update(sportDocRef, "ranking.$loser", FieldValue.increment(1))
                 
-                // Crear el nuevo documento de resultado
                 val resultData = hashMapOf(
                     "jugador1" to p1,
                     "jugador2" to p2,
@@ -281,30 +395,8 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun addPlayerToSport(sportName: String, playerName: String, onSuccess: () -> Unit) {
-        if (currentUserEmail == null) return
-        val sportDocRef = db.collection("users").document(currentUserEmail!!)
-            .collection("Deportes").document(sportName)
-
-        db.runBatch { batch ->
-            batch.update(sportDocRef, "jugadores", FieldValue.arrayUnion(playerName))
-            batch.update(sportDocRef, "ranking.$playerName", 0)
-        }.addOnSuccessListener { 
-            Toast.makeText(this, "Jugador '$playerName' añadido", Toast.LENGTH_SHORT).show()
-            onSuccess()
-        }.addOnFailureListener { e ->
-            // Si falla (ej. el campo ranking no existe), créalo e intenta de nuevo.
-            sportDocRef.update("ranking", emptyMap<String, Int>()).addOnSuccessListener {
-                addPlayerToSport(sportName, playerName, onSuccess) // Reintento
-            }
-        }
-    }
-    
     private fun createSportInDatabase(sportName: String) {
-        if (currentUserEmail == null) {
-            Toast.makeText(this, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
-            return
-        }
+        if (currentUserEmail == null) return
 
         val userDocRef = db.collection("users").document(currentUserEmail!!)
         val sportDocRef = userDocRef.collection("Deportes").document(sportName)
@@ -326,8 +418,6 @@ class HomeActivity : AppCompatActivity() {
         }
     }
     
-    // --- El resto de funciones se mantienen sin cambios ---
-
     private fun showSelectSportDialog() {
         if (currentUserEmail == null) return
 
@@ -483,26 +573,6 @@ class HomeActivity : AppCompatActivity() {
         title = "Inicio"
         println("EMAIL ----> $email")
         println("PROVIDER ----> $provider")
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        val navView: NavigationView? = findViewById(R.id.nav_view)
-        if (navView == null) {
-            menuInflater.inflate(R.menu.overflow, menu)
-            val errorButton = menu.findItem(R.id.errorButton)
-            errorButton.isVisible = false
-            Firebase.remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val showErrorButton = Firebase.remoteConfig.getBoolean("show_error_button")
-                    val newButtonText = Firebase.remoteConfig.getString("error_button_text")
-                    if (showErrorButton) {
-                        errorButton.isVisible = true
-                    }
-                    errorButton.title = newButtonText
-                }
-            }
-        }
-        return true
     }
 
     override fun onSupportNavigateUp(): Boolean {

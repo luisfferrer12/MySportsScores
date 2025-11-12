@@ -35,6 +35,7 @@ class HomeFragment : Fragment() {
         user?.email?.let { email ->
             db.collection("users").document(email).get()
                 .addOnSuccessListener { document ->
+                    if (_binding == null) return@addOnSuccessListener // Safety check
                     if (document != null && document.exists()) {
                         val activeGroup = document.getString("grupoActivo")
 
@@ -52,7 +53,12 @@ class HomeFragment : Fragment() {
                         binding.mainContentGroup.visibility = View.GONE
                     }
                 }
-                .addOnFailureListener { /* ... */ }
+                .addOnFailureListener { 
+                    if (_binding == null) return@addOnFailureListener
+                    binding.emptyStateMessage.text = "Error de conexión"
+                    binding.emptyStateMessage.visibility = View.VISIBLE
+                    binding.mainContentGroup.visibility = View.GONE
+                 }
         }
     }
 
@@ -61,6 +67,7 @@ class HomeFragment : Fragment() {
             .collection("Deportes").document(sportName)
 
         sportDocRef.get().addOnSuccessListener { sportDocument ->
+            if (_binding == null) return@addOnSuccessListener // Safety check
             val rankingMap = sportDocument.get("ranking") as? Map<String, Long> ?: emptyMap()
 
             if (rankingMap.isEmpty()) {
@@ -80,6 +87,7 @@ class HomeFragment : Fragment() {
     }
 
     private fun updatePodium(sortedRanking: List<Pair<String, Long>>) {
+        // No need for safety check here, as it's called synchronously
         binding.firstPlaceName.text = "-"
         binding.secondPlaceName.text = "-"
         binding.thirdPlaceName.text = "-"
@@ -96,6 +104,7 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupRecyclerView(rankingList: List<Pair<String, Long>>) {
+        // No need for safety check here
         val adapter = RankingAdapter(rankingList)
         binding.rankingRecyclerview.layoutManager = LinearLayoutManager(requireContext())
         binding.rankingRecyclerview.adapter = adapter
@@ -130,7 +139,7 @@ class HomeFragment : Fragment() {
                 when (position) {
                     0 -> {
                         binding.medalImageview.visibility = View.VISIBLE
-                        binding.medalImageview.setImageResource(R.drawable.ic_gold_medal) // Suponiendo que tienes estos drawables
+                        binding.medalImageview.setImageResource(R.drawable.ic_gold_medal)
                     }
                     1 -> {
                         binding.medalImageview.visibility = View.VISIBLE
