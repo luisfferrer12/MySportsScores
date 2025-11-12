@@ -286,7 +286,6 @@ class HomeActivity : AppCompatActivity() {
             .addOnSuccessListener { 
                 Toast.makeText(this, "¡Foto guardada en la galería de '$sportName'!", Toast.LENGTH_LONG).show()
                 
-                // Refresh gallery if visible
                 val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_home)
                 val currentFragment = navHostFragment?.childFragmentManager?.fragments?.get(0)
                 if (currentFragment is GalleryFragment) {
@@ -298,7 +297,6 @@ class HomeActivity : AppCompatActivity() {
             }
     }
 
-    // ... (El resto de las funciones no cambian)
     private fun showAddResultDialog() {
         if (currentUserEmail == null) return
 
@@ -399,22 +397,44 @@ class HomeActivity : AppCompatActivity() {
         if (currentUserEmail == null) return
 
         val userDocRef = db.collection("users").document(currentUserEmail!!)
-        val sportDocRef = userDocRef.collection("Deportes").document(sportName)
-        val sportId = UUID.randomUUID().toString()
+        userDocRef.get().addOnSuccessListener { userDoc ->
+            val sportsList = userDoc.get("listaDeportes") as? List<String> ?: emptyList()
+            val isFirstSport = sportsList.isEmpty()
+            val nickName = userDoc.getString("nickName")
 
-        val sportData = hashMapOf(
-            "idDeporte" to sportId,
-            "jugadores" to emptyList<String>(),
-            "ranking" to emptyMap<String, Int>()
-        )
+            val sportDocRef = userDocRef.collection("Deportes").document(sportName)
+            
+            val sportData: HashMap<String, Any>
+            if (isFirstSport && nickName != null && nickName.isNotEmpty()) {
+                sportData = hashMapOf(
+                    "idDeporte" to UUID.randomUUID().toString(),
+                    "jugadores" to listOf(nickName),
+                    "ranking" to mapOf(nickName to 0L)
+                )
+            } else {
+                sportData = hashMapOf(
+                    "idDeporte" to UUID.randomUUID().toString(),
+                    "jugadores" to emptyList<String>(),
+                    "ranking" to emptyMap<String, Long>()
+                )
+            }
 
-        db.runBatch { batch ->
-            batch.set(sportDocRef, sportData)
-            batch.update(userDocRef, "listaDeportes", FieldValue.arrayUnion(sportName))
-        }.addOnSuccessListener {
-            Toast.makeText(this, "Deporte '$sportName' creado con éxito", Toast.LENGTH_SHORT).show()
-        }.addOnFailureListener { e ->
-            Toast.makeText(this, "Error al crear el deporte: ${e.message}", Toast.LENGTH_LONG).show()
+            db.runBatch { batch ->
+                batch.set(sportDocRef, sportData)
+                batch.update(userDocRef, "listaDeportes", FieldValue.arrayUnion(sportName))
+                if (isFirstSport) {
+                    batch.update(userDocRef, "grupoActivo", sportName)
+                }
+            }.addOnSuccessListener {
+                Toast.makeText(this, "Deporte '$sportName' creado con éxito", Toast.LENGTH_SHORT).show()
+                if (isFirstSport) {
+                    navController.navigate(R.id.nav_home)
+                }
+            }.addOnFailureListener { e ->
+                Toast.makeText(this, "Error al crear el deporte: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }.addOnFailureListener { 
+            Toast.makeText(this, "Error al verificar deportes existentes", Toast.LENGTH_LONG).show()
         }
     }
     
