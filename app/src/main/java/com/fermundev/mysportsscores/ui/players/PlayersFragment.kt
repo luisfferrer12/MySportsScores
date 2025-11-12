@@ -1,6 +1,5 @@
 package com.fermundev.mysportsscores.ui.players
 
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -18,6 +17,7 @@ import com.fermundev.mysportsscores.databinding.ItemPlayerBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import androidx.core.graphics.drawable.toDrawable
 
 class PlayersFragment : Fragment() {
 
@@ -65,12 +65,12 @@ class PlayersFragment : Fragment() {
                 if (_binding == null) return@addOnSuccessListener
                 activeSport = userDoc.getString("grupoActivo")
                 if (activeSport.isNullOrEmpty()) {
-                    showEmptyState("No has seleccionado un deporte activo.")
-                    binding.playersTitle.text = "Jugadores"
+                    showEmptyState(getString(R.string.error_no_active_sport_players))
+                    binding.playersTitle.text = getString(R.string.menu_players)
                     return@addOnSuccessListener
                 }
 
-                binding.playersTitle.text = "Jugadores de $activeSport"
+                binding.playersTitle.text = getString(R.string.players_of_sport, activeSport)
                 val sportDocRef = db.collection("users").document(email)
                     .collection("Deportes").document(activeSport!!)
 
@@ -78,7 +78,7 @@ class PlayersFragment : Fragment() {
                     if (_binding == null) return@addOnSuccessListener
                     val players = sportSnapshot.get("jugadores") as? List<String> ?: emptyList()
                     if (players.isEmpty()) {
-                        showEmptyState("No hay jugadores en este deporte. ¡Añade uno!")
+                        showEmptyState(getString(R.string.empty_state_no_players))
                     } else {
                         binding.playersRecyclerview.visibility = View.VISIBLE
                         binding.emptyPlayersMessage.visibility = View.GONE
@@ -91,23 +91,23 @@ class PlayersFragment : Fragment() {
 
     private fun showAddPlayerDialog() {
         if (activeSport.isNullOrEmpty()) {
-            Toast.makeText(context, "Selecciona un deporte activo primero", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), getString(R.string.error_select_sport_first), Toast.LENGTH_SHORT).show()
             return
         }
 
-        val editText = EditText(context)
-        editText.hint = "Nombre del jugador"
+        val editText = EditText(requireContext())
+        editText.hint = getString(R.string.hint_player_name)
 
         AlertDialog.Builder(requireContext())
-            .setTitle("Añadir Nuevo Jugador")
+            .setTitle(getString(R.string.dialog_title_add_player))
             .setView(editText)
-            .setPositiveButton("Añadir") { _, _ ->
+            .setPositiveButton(getString(R.string.action_add)) { _, _ ->
                 val newPlayerName = editText.text.toString().trim()
                 if (newPlayerName.isNotEmpty()) {
                     addPlayerToSport(newPlayerName)
                 }
             }
-            .setNegativeButton("Cancelar", null)
+            .setNegativeButton(getString(R.string.action_cancel), null)
             .show()
     }
     
@@ -116,110 +116,116 @@ class PlayersFragment : Fragment() {
         editText.setText(oldName)
 
         AlertDialog.Builder(requireContext())
-            .setTitle("Editar Nombre del Jugador")
+            .setTitle(getString(R.string.dialog_title_edit_player))
             .setView(editText)
-            .setPositiveButton("Guardar") { _, _ ->
+            .setPositiveButton(getString(R.string.action_save)) { _, _ ->
                 val newName = editText.text.toString().trim()
                 if (newName.isNotEmpty() && newName != oldName) {
                     updatePlayerName(oldName, newName)
                 }
             }
-            .setNegativeButton("Cancelar", null)
+            .setNegativeButton(getString(R.string.action_cancel), null)
             .show()
     }
 
     private fun updatePlayerName(oldName: String, newName: String) {
-        if (user?.email == null || activeSport == null) return
-        showLoadingDialog(true)
+        user?.email?.let { email ->
+            activeSport?.let { sport ->
+                showLoadingDialog(true)
 
-        val sportDocRef = db.collection("users").document(user.email!!)
-            .collection("Deportes").document(activeSport!!)
-        val resultsCollectionRef = sportDocRef.collection("Resultados")
+                val sportDocRef = db.collection("users").document(email)
+                    .collection("Deportes").document(sport)
+                val resultsCollectionRef = sportDocRef.collection("Resultados")
 
-        // 1. Read all data first
-        sportDocRef.get().addOnSuccessListener { sportDoc ->
-            val players = sportDoc.get("jugadores") as? List<String> ?: emptyList()
-            val ranking = sportDoc.get("ranking") as? Map<String, Long> ?: emptyMap()
+                sportDocRef.get().addOnSuccessListener { sportDoc ->
+                    val players = sportDoc.get("jugadores") as? List<String> ?: emptyList()
+                    val ranking = sportDoc.get("ranking") as? Map<String, Long> ?: emptyMap()
 
-            resultsCollectionRef.get().addOnSuccessListener { resultsSnapshot ->
-                // 2. Perform batch write
-                db.runBatch { batch ->
-                    // Update ranking
-                    val score = ranking[oldName] ?: 0L
-                    val newRanking = ranking.toMutableMap()
-                    newRanking.remove(oldName)
-                    newRanking[newName] = score
-                    batch.update(sportDocRef, "ranking", newRanking)
+                    resultsCollectionRef.get().addOnSuccessListener { resultsSnapshot ->
+                        db.runBatch { batch ->
+                            val score = ranking[oldName] ?: 0L
+                            val newRanking = ranking.toMutableMap()
+                            newRanking.remove(oldName)
+                            newRanking[newName] = score
+                            batch.update(sportDocRef, "ranking", newRanking)
 
-                    // Update players list
-                    val newPlayersList = players.map { if (it == oldName) newName else it }
-                    batch.update(sportDocRef, "jugadores", newPlayersList)
+                            val newPlayersList = players.map { if (it == oldName) newName else it }
+                            batch.update(sportDocRef, "jugadores", newPlayersList)
 
-                    // Update results
-                    for (resultDoc in resultsSnapshot.documents) {
-                        if (resultDoc.getString("jugador1") == oldName) {
-                            batch.update(resultDoc.reference, "jugador1", newName)
-                        }
-                        if (resultDoc.getString("jugador2") == oldName) {
-                            batch.update(resultDoc.reference, "jugador2", newName)
+                            for (resultDoc in resultsSnapshot.documents) {
+                                if (resultDoc.getString("jugador1") == oldName) {
+                                    batch.update(resultDoc.reference, "jugador1", newName)
+                                }
+                                if (resultDoc.getString("jugador2") == oldName) {
+                                    batch.update(resultDoc.reference, "jugador2", newName)
+                                }
+                            }
+                        }.addOnSuccessListener {
+                            if (_binding == null) return@addOnSuccessListener
+                            showLoadingDialog(false)
+                            Toast.makeText(requireContext(), getString(R.string.success_player_updated), Toast.LENGTH_SHORT).show()
+                            loadPlayersData()
+                        }.addOnFailureListener { e ->
+                            if (_binding == null) return@addOnFailureListener
+                            showLoadingDialog(false)
+                            Toast.makeText(requireContext(), getString(R.string.error_updating_player, e.message), Toast.LENGTH_LONG).show()
                         }
                     }
-                }.addOnSuccessListener {
-                    if (_binding == null) return@addOnSuccessListener
-                    showLoadingDialog(false)
-                    Toast.makeText(context, "Jugador actualizado con éxito", Toast.LENGTH_SHORT).show()
-                    loadPlayersData()
-                }.addOnFailureListener { e ->
-                    if (_binding == null) return@addOnFailureListener
-                    showLoadingDialog(false)
-                    Toast.makeText(context, "Error al actualizar: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
     }
 
     private fun addPlayerToSport(playerName: String) {
-        val sportDocRef = db.collection("users").document(user!!.email!!)
-            .collection("Deportes").document(activeSport!!)
+        user?.email?.let { email ->
+            activeSport?.let { sport ->
+                val sportDocRef = db.collection("users").document(email)
+                    .collection("Deportes").document(sport)
 
-        db.runBatch { batch ->
-            batch.update(sportDocRef, "jugadores", FieldValue.arrayUnion(playerName))
-            batch.update(sportDocRef, "ranking.$playerName", 0)
-        }.addOnSuccessListener { 
-            if (_binding == null) return@addOnSuccessListener
-            Toast.makeText(context, "Jugador '$playerName' añadido", Toast.LENGTH_SHORT).show()
-            loadPlayersData() // Recargar
-        }.addOnFailureListener {
-            if (_binding == null) return@addOnFailureListener
-            Toast.makeText(context, "Error al añadir jugador", Toast.LENGTH_SHORT).show()
+                db.runBatch { batch ->
+                    batch.update(sportDocRef, "jugadores", FieldValue.arrayUnion(playerName))
+                    batch.update(sportDocRef, "ranking.$playerName", 0)
+                }.addOnSuccessListener { 
+                    if (_binding == null) return@addOnSuccessListener
+                    Toast.makeText(requireContext(), getString(R.string.success_player_added, playerName), Toast.LENGTH_SHORT).show()
+                    loadPlayersData()
+                }.addOnFailureListener {
+                    if (_binding == null) return@addOnFailureListener
+                    Toast.makeText(requireContext(), getString(R.string.error_adding_player), Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
     private fun showDeletePlayerConfirmationDialog(player: String) {
         AlertDialog.Builder(requireContext())
-            .setTitle("Eliminar Jugador")
-            .setMessage("¿Seguro que deseas eliminar a '$player'? Esta acción también lo eliminará del ranking. Los resultados de partidos existentes no se verán afectados.")
-            .setPositiveButton("Eliminar") { _, _ ->
+            .setTitle(getString(R.string.dialog_title_delete_player))
+            .setMessage(getString(R.string.dialog_message_delete_player, player))
+            .setPositiveButton(getString(R.string.action_delete)) { _, _ ->
                 deletePlayer(player)
             }
-            .setNegativeButton("Cancelar", null)
+            .setNegativeButton(getString(R.string.action_cancel), null)
             .show()
     }
 
     private fun deletePlayer(playerName: String) {
-        val sportDocRef = db.collection("users").document(user!!.email!!)
-            .collection("Deportes").document(activeSport!!)
+        user?.email?.let { email ->
+            activeSport?.let { sport ->
+                val sportDocRef = db.collection("users").document(email)
+                    .collection("Deportes").document(sport)
 
-        db.runBatch { batch ->
-            batch.update(sportDocRef, "jugadores", FieldValue.arrayRemove(playerName))
-            batch.update(sportDocRef, "ranking.$playerName", FieldValue.delete())
-        }.addOnSuccessListener { 
-            if (_binding == null) return@addOnSuccessListener
-            Toast.makeText(context, "Jugador '$playerName' eliminado", Toast.LENGTH_SHORT).show()
-            loadPlayersData() // Recargar
-        }.addOnFailureListener {
-            if (_binding == null) return@addOnFailureListener
-            Toast.makeText(context, "Error al eliminar jugador", Toast.LENGTH_SHORT).show()
+                db.runBatch { batch ->
+                    batch.update(sportDocRef, "jugadores", FieldValue.arrayRemove(playerName))
+                    batch.update(sportDocRef, "ranking.$playerName", FieldValue.delete())
+                }.addOnSuccessListener { 
+                    if (_binding == null) return@addOnSuccessListener
+                    Toast.makeText(requireContext(), getString(R.string.success_player_deleted, playerName), Toast.LENGTH_SHORT).show()
+                    loadPlayersData()
+                }.addOnFailureListener {
+                    if (_binding == null) return@addOnFailureListener
+                    Toast.makeText(requireContext(), getString(R.string.error_deleting_player), Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
@@ -237,7 +243,7 @@ class PlayersFragment : Fragment() {
                 builder.setView(progressBar)
                 builder.setCancelable(false)
                 loadingDialog = builder.create()
-                loadingDialog?.window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+                loadingDialog?.window?.setBackgroundDrawable(android.graphics.Color.TRANSPARENT.toDrawable())
             }
             loadingDialog?.show()
         } else {

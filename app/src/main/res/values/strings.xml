@@ -9,7 +9,8 @@
     <string name="action_settings">Settings</string>
     <string name="prefs_file">com.fermundev.mysportsscores.PREFERENCE_FILE_KEY</string>
 
-    <string name="menu_home">Inicio</string>
+    <!-- Menu Items -->
+    <string name="menu_home">Podium</string>
     <string name="menu_results">Resultados</string>
     <string name="menu_players">Jugadores</string>
     <string name="menu_slideshow">Galería</string>
@@ -17,6 +18,83 @@
     <string name="menu_settings">Configuración</string>
     <string name="menu_logOut">Cerrar Sesión</string>
 
+    <!-- Home Screen -->
+    <string name="home_title">Podium</string>
+    <string name="exit_prompt">Presiona de nuevo para salir</string>
+    <string name="empty_state_no_sport">No has seleccionado un deporte activo. Ve a \"Crear Nuevo Deporte\" para empezar.</string>
+    <string name="error_connection_home">Error de conexión</string>
+    <string name="empty_state_no_ranking">Aún no hay resultados para este deporte.</string>
+    <string name="ranking_points">%1$d pts</string>
+    <string name="ranking_position">%1$d.</string>
+    <string name="placeholder_podium">-</string>
+
+    <!-- Player Screen -->
+    <string name="players_of_sport">Jugadores de %1$s</string>
+    <string name="error_no_active_sport_players">No has seleccionado un deporte activo.</string>
+    <string name="empty_state_no_players">No hay jugadores en este deporte. ¡Añade uno!</string>
+    <string name="error_select_sport_first">Selecciona un deporte activo primero</string>
+    <string name="hint_player_name">Nombre del jugador</string>
+    <string name="dialog_title_add_player">Añadir Nuevo Jugador</string>
+    <string name="dialog_title_edit_player">Editar Nombre del Jugador</string>
+    <string name="dialog_title_delete_player">Eliminar Jugador</string>
+    <string name="dialog_message_delete_player">¿Seguro que deseas eliminar a \'%1$s\'? Esta acción también lo eliminará del ranking. Los resultados de partidos existentes no se verán afectados.</string>
+    <string name="success_player_added">Jugador \'%1$s\' añadido</string>
+    <string name="success_player_updated">Jugador actualizado con éxito</string>
+    <string name="success_player_deleted">Jugador \'%1$s\' eliminado</string>
+    <string name="error_adding_player">Error al añadir jugador</string>
+    <string name="error_updating_player">Error al actualizar: %1$s</string>
+    <string name="error_deleting_player">Error al eliminar jugador</string>
+
+    <!-- Results Screen -->
+    <string name="error_no_active_sport_results">No has seleccionado un deporte activo.</string>
+    <string name="empty_state_no_results">No hay resultados para este deporte.</string>
+    <string name="error_loading_results">Error al cargar resultados.</string>
+    <string name="error_no_players_in_sport">No hay jugadores en este deporte.</string>
+    <string name="dialog_title_edit_result">Editar Resultado</string>
+    <string name="error_invalid_data">Datos inválidos</string>
+    <string name="success_result_updated">Resultado actualizado</string>
+    <string name="error_updating_result">Error al actualizar: %1$s</string>
+    <string name="dialog_title_delete_result">Eliminar Resultado</string>
+    <string name="dialog_message_delete_result">¿Seguro que deseas eliminar este resultado? Esta acción no se puede deshacer y afectará al ranking.</string>
+    <string name="success_result_deleted">Resultado eliminado y ranking actualizado</string>
+    <string name="error_deleting_result">Error al eliminar: %1$s</string>
+
+    <!-- Home Activity Dialogs & Toasts -->
+    <string name="dialog_title_logout">Cerrar Sesión</string>
+    <string name="dialog_message_logout">¿Seguro que deseas cerrar sesión?</string>
+    <string name="action_close">Cerrar</string>
+    <string name="error_no_active_sport_photo">Selecciona un deporte activo para guardar la foto</string>
+    <string name="camera_permission_title">Permiso de Cámara</string>
+    <string name="camera_permission_message">Para tomar fotos, necesitamos acceso a tu cámara.</string>
+    <string name="camera_permission_denied">Permiso de cámara denegado</string>
+    <string name="uploading_image">Subiendo imagen…</string>
+    <string name="success_photo_saved">¡Foto guardada en la galería de \'%1$s\'!</string>
+    <string name="error_uploading_image">Error al subir la imagen: %1$s</string>
+    <string name="error_need_at_least_two_players">Necesitas al menos 2 jugadores en este deporte para añadir un resultado.</string>
+    <string name="dialog_title_add_result">Añadir Resultado</string>
+    <string name="error_add_result_validation">Completa todos los campos y asegúrate que los jugadores sean diferentes</string>
+    <string name="success_result_saved">Resultado guardado y ranking actualizado</string>
+    <string name="error_saving_result">Error al guardar el resultado: %1$s</string>
+    <string name="error_counting_matches">Error al contar los partidos: %1$s</string>
+    <string name="success_sport_created">Deporte \'%1$s\' creado con éxito</string>
+    <string name="error_creating_sport">Error al crear el deporte: %1$s</string>
+    <string name="error_verifying_sports">Error al verificar deportes existentes</string>
+    <string name="dialog_title_select_sport">Selecciona tu Deporte Activo</string>
+    <string name="error_no_sports_created">Aún no has creado ningún deporte</string>
+    <string name="success_sport_updated">\'%1$s\' es ahora tu deporte activo</string>
+    <string name="error_updating_sport">Error al actualizar el deporte: %1$s</string>
+    <string name="dialog_title_create_sport">Crear Nuevo Deporte</string>
+    <string name="hint_sport_name">Nombre del Deporte</string>
+    <string name="error_name_empty">El nombre no puede estar vacío</string>
+    <string name="notifications_permission_granted">Permisos para notificaciones concedidos</string>
+    <string name="notifications_permission_denied">Permisos para notificaciones denegados</string>
+
+    <!-- Generic Actions & Errors -->
+    <string name="action_add">Añadir</string>
+    <string name="action_save">Guardar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="error_user_not_identified">Usuario no identificado.</string>
 
     <string name="lorem_ipsum_title">Lorem Ipsum"</string>
     <string name="lorem_ipsum">Lorem Ipsum is simply placeholder text of the printing and

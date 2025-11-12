@@ -27,19 +27,24 @@ class HomeFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
-        loadActiveGroupData()
         return binding.root
+    }
+
+    override fun onResume() {
+        super.onResume()
+        loadActiveGroupData()
     }
 
     private fun loadActiveGroupData() {
         user?.email?.let { email ->
             db.collection("users").document(email).get()
                 .addOnSuccessListener { document ->
-                    if (_binding == null) return@addOnSuccessListener // Safety check
+                    if (_binding == null) return@addOnSuccessListener
                     if (document != null && document.exists()) {
                         val activeGroup = document.getString("grupoActivo")
 
                         if (activeGroup.isNullOrEmpty()) {
+                            binding.emptyStateMessage.text = getString(R.string.empty_state_no_sport)
                             binding.emptyStateMessage.visibility = View.VISIBLE
                             binding.mainContentGroup.visibility = View.GONE
                         } else {
@@ -49,13 +54,14 @@ class HomeFragment : Fragment() {
                             loadRankingData(email, activeGroup)
                         }
                     } else {
+                        binding.emptyStateMessage.text = getString(R.string.error_connection_home)
                         binding.emptyStateMessage.visibility = View.VISIBLE
                         binding.mainContentGroup.visibility = View.GONE
                     }
                 }
                 .addOnFailureListener { 
                     if (_binding == null) return@addOnFailureListener
-                    binding.emptyStateMessage.text = "Error de conexión"
+                    binding.emptyStateMessage.text = getString(R.string.error_connection_home)
                     binding.emptyStateMessage.visibility = View.VISIBLE
                     binding.mainContentGroup.visibility = View.GONE
                  }
@@ -67,7 +73,7 @@ class HomeFragment : Fragment() {
             .collection("Deportes").document(sportName)
 
         sportDocRef.get().addOnSuccessListener { sportDocument ->
-            if (_binding == null) return@addOnSuccessListener // Safety check
+            if (_binding == null) return@addOnSuccessListener
             val rankingMap = sportDocument.get("ranking") as? Map<String, Long> ?: emptyMap()
 
             if (rankingMap.isEmpty()) {
@@ -87,10 +93,10 @@ class HomeFragment : Fragment() {
     }
 
     private fun updatePodium(sortedRanking: List<Pair<String, Long>>) {
-        // No need for safety check here, as it's called synchronously
-        binding.firstPlaceName.text = "-"
-        binding.secondPlaceName.text = "-"
-        binding.thirdPlaceName.text = "-"
+        val placeholder = getString(R.string.placeholder_podium)
+        binding.firstPlaceName.text = placeholder
+        binding.secondPlaceName.text = placeholder
+        binding.thirdPlaceName.text = placeholder
 
         if (sortedRanking.isNotEmpty()) {
             binding.firstPlaceName.text = sortedRanking[0].first
@@ -104,7 +110,6 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupRecyclerView(rankingList: List<Pair<String, Long>>) {
-        // No need for safety check here
         val adapter = RankingAdapter(rankingList)
         binding.rankingRecyclerview.layoutManager = LinearLayoutManager(requireContext())
         binding.rankingRecyclerview.adapter = adapter
@@ -132,9 +137,9 @@ class HomeFragment : Fragment() {
         inner class ViewHolder(private val binding: ItemRankingBinding) : RecyclerView.ViewHolder(binding.root) {
             fun bind(item: Pair<String, Long>, position: Int) {
                 val (name, points) = item
-                binding.positionTextview.text = "${position + 1}."
+                binding.positionTextview.text = getString(R.string.ranking_position, position + 1)
                 binding.playerNameTextview.text = name
-                binding.pointsTextview.text = "$points pts"
+                binding.pointsTextview.text = getString(R.string.ranking_points, points)
 
                 when (position) {
                     0 -> {
