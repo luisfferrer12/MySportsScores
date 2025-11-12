@@ -151,6 +151,69 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/editUsernameButton" />
+            
+        <!-- Scoring Section -->
+        <TextView
+            android:id="@+id/scoringLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Puntuación (Oposición Directa)"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/changePasswordButton" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/winPointsLayout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="8dp"
+            app:layout_constraintEnd_toStartOf="@+id/drawPointsLayout"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/scoringLabel">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/winPointsEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Victoria"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/drawPointsLayout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            app:layout_constraintEnd_toStartOf="@+id/lossPointsLayout"
+            app:layout_constraintStart_toEndOf="@+id/winPointsLayout"
+            app:layout_constraintTop_toTopOf="@+id/winPointsLayout">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/drawPointsEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Empate"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/lossPointsLayout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/drawPointsLayout"
+            app:layout_constraintTop_toTopOf="@+id/winPointsLayout">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/lossPointsEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Derrota"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
 
         <!-- Action Buttons -->
         <com.google.android.material.button.MaterialButton
@@ -160,7 +223,7 @@
             android:layout_marginTop="32dp"
             android:text="Guardar"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/changePasswordButton" />
+            app:layout_constraintTop_toBottomOf="@id/winPointsLayout" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/cancelButton"

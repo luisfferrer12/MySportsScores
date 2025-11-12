@@ -125,6 +125,9 @@
     <string name="error_name_empty">El nombre no puede estar vacío</string>
     <string name="notifications_permission_granted">Permisos para notificaciones concedidos</string>
     <string name="notifications_permission_denied">Permisos para notificaciones denegados</string>
+    <string name="dialog_title_sport_type_info">Tipos de Deporte</string>
+    <string name="dialog_message_sport_type_info"><b>Oposición Directa:</b> Ideal para deportes como tenis, squash, fútbol, etc., donde dos jugadores o equipos se enfrentan y hay un ganador y un perdedor (o empate).\n\n<b>Rendimiento Individual:</b> Ideal para deportes como natación, atletismo, etc., donde los competidores se miden por tiempo o puntuación individual en eventos.</string>
+    <string name="pending_performance_logic">Lógica para deportes de rendimiento individual pendiente.</string>
 
     <!-- Generic Actions & Errors -->
     <string name="action_add">Añadir</string>

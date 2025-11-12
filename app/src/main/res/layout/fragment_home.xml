@@ -35,6 +35,12 @@
             android:layout_height="wrap_content"
             app:constraint_referenced_ids="sport_title_textview,podium_layout,ranking_title,empty_ranking_message,ranking_recyclerview" />
 
+        <androidx.constraintlayout.widget.Group
+            android:id="@+id/podiumGroup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:constraint_referenced_ids="podium_layout" />
+
         <!-- 1. Título del Deporte -->
         <TextView
             android:id="@+id/sport_title_textview"
@@ -133,7 +139,7 @@
                 app:cardBackgroundColor="#CD7F32"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@+id/first_place_card">
+                app:layout_constraintStart_toEndOf="@id/first_place_card">
 
                 <LinearLayout
                     android:layout_width="match_parent"

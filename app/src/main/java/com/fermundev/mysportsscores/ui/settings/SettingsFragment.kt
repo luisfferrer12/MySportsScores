@@ -26,7 +26,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.storage.FirebaseStorage
-import androidx.core.graphics.drawable.toDrawable
 
 class SettingsFragment : Fragment() {
 
@@ -95,9 +94,29 @@ class SettingsFragment : Fragment() {
                         if (activeSport.isNullOrEmpty()) {
                             binding.activeSportTextView.text = getString(R.string.active_sport_none)
                             binding.deleteSportButton.visibility = View.GONE
+                            binding.scoringLabel.visibility = View.GONE
+                            binding.winPointsLayout.visibility = View.GONE
+                            binding.drawPointsLayout.visibility = View.GONE
+                            binding.lossPointsLayout.visibility = View.GONE
                         } else {
                             binding.activeSportTextView.text = activeSport
                             binding.deleteSportButton.visibility = View.VISIBLE
+                            binding.scoringLabel.visibility = View.VISIBLE
+                            binding.winPointsLayout.visibility = View.VISIBLE
+                            binding.drawPointsLayout.visibility = View.VISIBLE
+                            binding.lossPointsLayout.visibility = View.VISIBLE
+                            
+                            // Load scoring points from the active sport document
+                            db.collection("users").document(email).collection("Deportes").document(activeSport!!).get()
+                                .addOnSuccessListener { sportDoc ->
+                                    if (_binding == null) return@addOnSuccessListener
+                                    val winPoints = sportDoc.getLong("points_win") ?: 3L
+                                    val drawPoints = sportDoc.getLong("points_draw") ?: 1L
+                                    val lossPoints = sportDoc.getLong("points_loss") ?: 0L
+                                    binding.winPointsEditText.setText(winPoints.toString())
+                                    binding.drawPointsEditText.setText(drawPoints.toString())
+                                    binding.lossPointsEditText.setText(lossPoints.toString())
+                                }
                         }
                     }
                     showLoadingDialog(false)
@@ -112,6 +131,21 @@ class SettingsFragment : Fragment() {
 
     private fun saveUserData() {
         showLoadingDialog(true)
+
+        // --- Save Sport-Specific Settings --- //
+        activeSport?.let { sport ->
+            user?.email?.let { email ->
+                val sportDocRef = db.collection("users").document(email).collection("Deportes").document(sport)
+                val sportUpdates = hashMapOf<String, Any>(
+                    "points_win" to (binding.winPointsEditText.text.toString().toLongOrNull() ?: 3L),
+                    "points_draw" to (binding.drawPointsEditText.text.toString().toLongOrNull() ?: 1L),
+                    "points_loss" to (binding.lossPointsEditText.text.toString().toLongOrNull() ?: 0L)
+                )
+                sportDocRef.update(sportUpdates)
+            }
+        }
+
+        // --- Save User-Specific Settings --- //
         val updates = mutableMapOf<String, Any>()
         if (newUsername.isNotEmpty()) { updates["nickName"] = newUsername }
         updates["notificaciones"] = notificationsStatus
@@ -238,7 +272,7 @@ class SettingsFragment : Fragment() {
                 builder.setView(progressBar)
                 builder.setCancelable(false)
                 loadingDialog = builder.create()
-                loadingDialog?.window?.setBackgroundDrawable(android.graphics.Color.TRANSPARENT.toDrawable())
+                loadingDialog?.window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
             }
             loadingDialog?.show()
         } else {

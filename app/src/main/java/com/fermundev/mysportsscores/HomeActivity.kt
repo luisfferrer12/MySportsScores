@@ -1,11 +1,13 @@
 package com.fermundev.mysportsscores
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.text.Html
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
@@ -13,7 +15,7 @@ import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
-import android.widget.FrameLayout
+import android.widget.RadioGroup
 import android.widget.Spinner
 import android.widget.Toast
 import androidx.activity.addCallback
@@ -30,6 +32,8 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.fermundev.mysportsscores.databinding.ActivityHomeBinding
+import com.fermundev.mysportsscores.databinding.DialogAddPerformanceResultBinding
+import com.fermundev.mysportsscores.databinding.DialogCreateSportBinding
 import com.fermundev.mysportsscores.ui.gallery.GalleryFragment
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.Firebase
@@ -46,6 +50,11 @@ import java.util.UUID
 enum class ProviderType{
     BASIC,
     GOOGLE
+}
+
+enum class SportType {
+    OPPOSITION,
+    PERFORMANCE
 }
 
 class HomeActivity : AppCompatActivity() {
@@ -184,7 +193,7 @@ class HomeActivity : AppCompatActivity() {
                     .setMessage(getString(R.string.dialog_message_logout))
                     .setPositiveButton(getString(R.string.action_close)) { _, _ ->
                         FirebaseAuth.getInstance().signOut()
-                        val prefs = getSharedPreferences(getString(R.string.prefs_file), MODE_PRIVATE)
+                        val prefs = getSharedPreferences(getString(R.string.prefs_file), Context.MODE_PRIVATE)
                         prefs.edit { clear() }
                         val intent = Intent(this, AuthActivity::class.java)
                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -216,12 +225,91 @@ class HomeActivity : AppCompatActivity() {
             closeFabMenu()
         }
         binding.appBarHome.fabAddResult?.setOnClickListener {
-            showAddResultDialog()
+            onAddResultClicked()
             closeFabMenu()
         }
         binding.appBarHome.fabTakePhoto?.setOnClickListener {
             startPhotoProcess()
             closeFabMenu()
+        }
+    }
+
+    private fun onAddResultClicked() {
+        currentUserEmail?.let { email ->
+            db.collection("users").document(email).get().addOnSuccessListener { userDoc ->
+                val activeSport = userDoc.getString("grupoActivo")
+                if (activeSport.isNullOrEmpty()) {
+                    Toast.makeText(this, getString(R.string.error_select_sport_first), Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+
+                db.collection("users").document(email).collection("Deportes").document(activeSport).get()
+                    .addOnSuccessListener { sportDoc ->
+                        val sportType = sportDoc.getString("sportType")?.let { SportType.valueOf(it) } ?: SportType.OPPOSITION
+                        when (sportType) {
+                            SportType.OPPOSITION -> showAddOppositionResultDialog()
+                            SportType.PERFORMANCE -> showAddPerformanceResultDialog()
+                        }
+                    }
+            }
+        }
+    }
+
+    private fun showAddPerformanceResultDialog() {
+        currentUserEmail?.let { email ->
+            db.collection("users").document(email).get().addOnSuccessListener { userDoc ->
+                val activeSport = userDoc.getString("grupoActivo")
+                if (activeSport.isNullOrEmpty()) {
+                    Toast.makeText(this, getString(R.string.error_select_sport_first), Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+
+                val sportDocRef = db.collection("users").document(email).collection("Deportes").document(activeSport)
+                sportDocRef.get().addOnSuccessListener { sportDoc ->
+                    val players = sportDoc.get("jugadores") as? List<String> ?: emptyList()
+                    if (players.isEmpty()) {
+                        Toast.makeText(this, getString(R.string.empty_state_no_players), Toast.LENGTH_LONG).show()
+                        return@addOnSuccessListener
+                    }
+
+                    val dialogBinding = DialogAddPerformanceResultBinding.inflate(layoutInflater)
+                    val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, players)
+                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                    dialogBinding.playerSpinner.adapter = adapter
+
+                    AlertDialog.Builder(this)
+                        .setTitle("Añadir Resultado de Rendimiento")
+                        .setView(dialogBinding.root)
+                        .setPositiveButton(getString(R.string.action_add)) { _, _ ->
+                            val eventName = dialogBinding.eventNameEditText.text.toString().trim()
+                            val selectedPlayer = dialogBinding.playerSpinner.selectedItem.toString()
+                            val result = dialogBinding.resultEditText.text.toString().toDoubleOrNull()
+
+                            if (eventName.isNotEmpty() && result != null) {
+                                saveNewPerformanceResult(activeSport, eventName, selectedPlayer, result)
+                            }
+                        }
+                        .setNegativeButton(getString(R.string.action_cancel), null)
+                        .show()
+                }
+            }
+        }
+    }
+
+    private fun saveNewPerformanceResult(sportName: String, eventName: String, player: String, result: Double) {
+        currentUserEmail?.let { email ->
+            val sportDocRef = db.collection("users").document(email).collection("Deportes").document(sportName)
+            val resultData = hashMapOf(
+                "eventName" to eventName,
+                "player" to player,
+                "result" to result,
+                "timestamp" to Timestamp.now(),
+                "type" to "PERFORMANCE" // Differentiate result type
+            )
+            sportDocRef.collection("Resultados").add(resultData).addOnSuccessListener {
+                Toast.makeText(this, "Resultado de rendimiento guardado", Toast.LENGTH_SHORT).show()
+                navController.navigate(R.id.nav_results) // Navigate to see the new result
+            }
         }
     }
 
@@ -295,23 +383,26 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun showAddResultDialog() {
+    private fun showAddOppositionResultDialog() {
         currentUserEmail?.let { email ->
-            val userDocRef = db.collection("users").document(email)
-            userDocRef.get().addOnSuccessListener { document ->
-                val activeSport = document.getString("grupoActivo")
+            db.collection("users").document(email).get().addOnSuccessListener { userDoc ->
+                val activeSport = userDoc.getString("grupoActivo")
                 if (activeSport.isNullOrEmpty()) {
                     Toast.makeText(this, getString(R.string.error_select_sport_first), Toast.LENGTH_SHORT).show()
                     return@addOnSuccessListener
                 }
 
-                val sportDocRef = userDocRef.collection("Deportes").document(activeSport)
+                val sportDocRef = db.collection("users").document(email).collection("Deportes").document(activeSport)
                 sportDocRef.get().addOnSuccessListener { sportDoc ->
                     val players = sportDoc.get("jugadores") as? List<String> ?: emptyList()
                     if (players.size < 2) {
                         Toast.makeText(this, getString(R.string.error_need_at_least_two_players), Toast.LENGTH_LONG).show()
                         return@addOnSuccessListener
                     }
+
+                    val winPoints = sportDoc.getLong("points_win") ?: 3L
+                    val drawPoints = sportDoc.getLong("points_draw") ?: 1L
+                    val lossPoints = sportDoc.getLong("points_loss") ?: 0L
 
                     val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_result, null)
                     val player1Spinner = dialogView.findViewById<Spinner>(R.id.player1_spinner)
@@ -334,11 +425,11 @@ class HomeActivity : AppCompatActivity() {
                     saveButton.setOnClickListener {
                         val p1 = player1Spinner.selectedItem.toString()
                         val p2 = player2Spinner.selectedItem.toString()
-                        val p1PointsText = player1Points.text.toString()
-                        val p2PointsText = player2Points.text.toString()
+                        val p1Score = player1Points.text.toString().toLongOrNull() ?: 0
+                        val p2Score = player2Points.text.toString().toLongOrNull() ?: 0
 
-                        if (p1.isNotEmpty() && p2.isNotEmpty() && p1PointsText.isNotEmpty() && p2PointsText.isNotEmpty() && p1 != p2) {
-                            saveNewResult(activeSport, p1, p2, p1PointsText.toInt(), p2PointsText.toInt())
+                        if (p1.isNotEmpty() && p2.isNotEmpty() && p1 != p2) {
+                            saveNewResult(activeSport, p1, p2, p1Score, p2Score, winPoints, drawPoints, lossPoints)
                             dialog.dismiss()
                         } else {
                             Toast.makeText(this, getString(R.string.error_add_result_validation), Toast.LENGTH_LONG).show()
@@ -352,7 +443,7 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun saveNewResult(sportName: String, p1: String, p2: String, p1Points: Int, p2Points: Int) {
+    private fun saveNewResult(sportName: String, p1: String, p2: String, p1Score: Long, p2Score: Long, winP: Long, drawP: Long, lossP: Long) {
         currentUserEmail?.let { email ->
             val sportDocRef = db.collection("users").document(email).collection("Deportes").document(sportName)
             val resultsColRef = sportDocRef.collection("Resultados")
@@ -363,18 +454,25 @@ class HomeActivity : AppCompatActivity() {
                 val newResultDoc = resultsColRef.document("partido N°$matchNumber")
 
                 db.runBatch { batch ->
-                    val (winner, loser) = if (p1Points > p2Points) p1 to p2 else p2 to p1
-
-                    batch.update(sportDocRef, "ranking.$winner", FieldValue.increment(3))
-                    batch.update(sportDocRef, "ranking.$loser", FieldValue.increment(1))
+                    if (p1Score == p2Score) {
+                        // Draw
+                        batch.update(sportDocRef, "ranking.$p1", FieldValue.increment(drawP))
+                        batch.update(sportDocRef, "ranking.$p2", FieldValue.increment(drawP))
+                    } else {
+                        // Win/Loss
+                        val (winner, loser) = if (p1Score > p2Score) p1 to p2 else p2 to p1
+                        batch.update(sportDocRef, "ranking.$winner", FieldValue.increment(winP))
+                        batch.update(sportDocRef, "ranking.$loser", FieldValue.increment(lossP))
+                    }
                     
                     val resultData = hashMapOf(
                         "jugador1" to p1,
                         "jugador2" to p2,
-                        "puntosJugador1" to p1Points,
-                        "puntosJugador2" to p2Points,
+                        "puntosJugador1" to p1Score,
+                        "puntosJugador2" to p2Score,
                         "timestamp" to Timestamp.now(),
-                        "uid" to resultId
+                        "uid" to resultId,
+                        "type" to "OPPOSITION"
                     )
                     batch.set(newResultDoc, resultData)
 
@@ -390,7 +488,7 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun createSportInDatabase(sportName: String) {
+    private fun createSportInDatabase(sportName: String, sportType: SportType) {
         currentUserEmail?.let { email ->
             val userDocRef = db.collection("users").document(email)
             userDocRef.get().addOnSuccessListener { userDoc ->
@@ -400,18 +498,25 @@ class HomeActivity : AppCompatActivity() {
 
                 val sportDocRef = userDocRef.collection("Deportes").document(sportName)
                 
-                val sportData: HashMap<String, Any>
-                if (isFirstSport && nickName != null && nickName.isNotEmpty()) {
-                    sportData = hashMapOf(
+                val sportData: HashMap<String, Any> = if (isFirstSport && nickName != null && nickName.isNotEmpty()) {
+                    hashMapOf(
                         "idDeporte" to UUID.randomUUID().toString(),
                         "jugadores" to listOf(nickName),
-                        "ranking" to mapOf(nickName to 0L)
+                        "ranking" to mapOf(nickName to 0L),
+                        "points_win" to 3L,
+                        "points_draw" to 1L,
+                        "points_loss" to 0L,
+                        "sportType" to sportType.name
                     )
                 } else {
-                    sportData = hashMapOf(
+                    hashMapOf(
                         "idDeporte" to UUID.randomUUID().toString(),
                         "jugadores" to emptyList<String>(),
-                        "ranking" to emptyMap<String, Long>()
+                        "ranking" to emptyMap<String, Long>(),
+                        "points_win" to 3L,
+                        "points_draw" to 1L,
+                        "points_loss" to 0L,
+                        "sportType" to sportType.name
                     )
                 }
 
@@ -481,25 +586,31 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun showCreateSportDialog() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle(getString(R.string.dialog_title_create_sport))
-        val container = FrameLayout(this)
-        val input = EditText(this)
-        input.hint = getString(R.string.hint_sport_name)
-        container.addView(input)
-        val padding = (20 * resources.displayMetrics.density).toInt()
-        container.setPadding(padding, 0, padding, 0)
-        builder.setView(container)
-        builder.setPositiveButton(getString(R.string.action_add)) { _, _ ->
-            val sportName = input.text.toString().trim()
-            if (sportName.isNotEmpty()) {
-                createSportInDatabase(sportName)
-            } else {
-                Toast.makeText(this, getString(R.string.error_name_empty), Toast.LENGTH_SHORT).show()
-            }
+        val dialogBinding = DialogCreateSportBinding.inflate(layoutInflater)
+        
+        dialogBinding.sportTypeInfoButton.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(getString(R.string.dialog_title_sport_type_info))
+                .setMessage(Html.fromHtml(getString(R.string.dialog_message_sport_type_info), Html.FROM_HTML_MODE_LEGACY))
+                .setPositiveButton(getString(android.R.string.ok), null)
+                .show()
         }
-        builder.setNegativeButton(getString(R.string.action_cancel), null)
-        builder.show()
+
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.dialog_title_create_sport))
+            .setView(dialogBinding.root)
+            .setPositiveButton(getString(R.string.action_add)) { _, _ ->
+                val sportName = dialogBinding.sportNameEditText.text.toString().trim()
+                if (sportName.isNotEmpty()) {
+                    val selectedTypeId = dialogBinding.sportTypeRadioGroup.checkedRadioButtonId
+                    val sportType = if (selectedTypeId == R.id.performanceRadioButton) SportType.PERFORMANCE else SportType.OPPOSITION
+                    createSportInDatabase(sportName, sportType)
+                } else {
+                    Toast.makeText(this, getString(R.string.error_name_empty), Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(getString(R.string.action_cancel), null)
+            .show()
     }
     
     private fun askNotificationPermission() {
