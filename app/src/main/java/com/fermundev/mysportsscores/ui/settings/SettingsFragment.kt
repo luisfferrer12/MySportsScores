@@ -21,7 +21,9 @@ import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.fermundev.mysportsscores.R
 import com.fermundev.mysportsscores.databinding.FragmentSettingsBinding
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.storage.FirebaseStorage
@@ -35,6 +37,7 @@ class SettingsFragment : Fragment() {
     private val user = FirebaseAuth.getInstance().currentUser
     private val storage = FirebaseStorage.getInstance()
     private var provider: String? = null
+    private var activeSport: String? = null
 
     // Variables para guardar los cambios pendientes
     private var newUsername = ""
@@ -64,6 +67,7 @@ class SettingsFragment : Fragment() {
         setupNotificationsSwitch()
         setupProfileImageListeners()
         setupAccountSection()
+        setupSportSection()
         setupActionButtons()
 
         return binding.root
@@ -87,8 +91,14 @@ class SettingsFragment : Fragment() {
                             Glide.with(this).load(imageUrl).placeholder(R.drawable.avatar_1).error(R.drawable.avatar_1).circleCrop().into(binding.profileImageView)
                         }
 
-                        val activeGroup = document.getString("grupoActivo")
-                        binding.activeSportTextView.text = if (activeGroup.isNullOrEmpty()) "Ninguno" else activeGroup
+                        activeSport = document.getString("grupoActivo")
+                        if (activeSport.isNullOrEmpty()) {
+                            binding.activeSportTextView.text = "Ninguno"
+                            binding.deleteSportButton.visibility = View.GONE
+                        } else {
+                            binding.activeSportTextView.text = activeSport
+                            binding.deleteSportButton.visibility = View.VISIBLE
+                        }
                     }
                     showLoadingDialog(false)
                 }
@@ -155,6 +165,69 @@ class SettingsFragment : Fragment() {
                 }
         } else {
             updateFirestore()
+        }
+    }
+
+    private fun setupSportSection() {
+        binding.deleteSportButton.setOnClickListener {
+            activeSport?.let { sportName ->
+                showDeleteSportConfirmationDialog(sportName)
+            }
+        }
+    }
+
+    private fun showDeleteSportConfirmationDialog(sportName: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Eliminar Deporte")
+            .setMessage("¿Seguro que deseas eliminar '$sportName'? Se borrarán permanentemente todos sus resultados, jugadores, ranking y fotos de la galería. Esta acción no se puede deshacer.")
+            .setPositiveButton("Eliminar") { _, _ ->
+                deleteCurrentSport(sportName)
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun deleteCurrentSport(sportName: String) {
+        if (user?.email == null) return
+        showLoadingDialog(true)
+
+        val userEmail = user.email!!
+        val galleryRef = storage.reference.child("MySportsScores/$userEmail/gallery/$sportName")
+        val sportDocRef = db.collection("users").document(userEmail).collection("Deportes").document(sportName)
+
+        // 1. Delete gallery photos
+        galleryRef.listAll().addOnSuccessListener { listResult ->
+            val deletePromises = listResult.items.map { it.delete() }
+            Tasks.whenAll(deletePromises).addOnCompleteListener { 
+                // 2. Delete results subcollection
+                sportDocRef.collection("Resultados").get().addOnSuccessListener { resultsSnapshot ->
+                    val batch = db.batch()
+                    resultsSnapshot.documents.forEach { doc -> batch.delete(doc.reference) }
+                    batch.commit().addOnCompleteListener {
+                        // 3. Delete sport doc and update user doc
+                        db.collection("users").document(userEmail).get().addOnSuccessListener { userDoc ->
+                            val sportsList = userDoc.get("listaDeportes") as? MutableList<String> ?: mutableListOf()
+                            sportsList.remove(sportName)
+                            val newActiveSport = if (sportsList.isEmpty()) "" else sportsList[0]
+
+                            val finalBatch = db.batch()
+                            finalBatch.delete(sportDocRef)
+                            finalBatch.update(userDoc.reference, "listaDeportes", sportsList)
+                            finalBatch.update(userDoc.reference, "grupoActivo", newActiveSport)
+                            finalBatch.commit().addOnSuccessListener {
+                                if (_binding == null) return@addOnSuccessListener
+                                showLoadingDialog(false)
+                                Toast.makeText(context, "Deporte '$sportName' eliminado", Toast.LENGTH_LONG).show()
+                                rechargeUserInfo()
+                            }
+                        }
+                    }
+                }
+            }
+        }.addOnFailureListener { e ->
+            if (_binding == null) return@addOnFailureListener
+            showLoadingDialog(false)
+            Toast.makeText(context, "Error durante la eliminación: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -277,7 +350,7 @@ class SettingsFragment : Fragment() {
         dialog.window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
         dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
 
-        val fullScreenImageView = dialog.findViewById<ImageView>(R.id.fullScreenImageView)
+        val fullScreenImageView = dialog.findViewById<ImageView>(R.id.full_screen_imageview)
         fullScreenImageView.setImageDrawable(binding.profileImageView.drawable)
 
         fullScreenImageView.setOnClickListener { dialog.dismiss() }

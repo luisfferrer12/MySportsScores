@@ -82,6 +82,20 @@
             app:layout_constraintTop_toBottomOf="@id/activeSportLabel"
             tools:text="Fútbol" />
 
+        <TextView
+            android:id="@+id/deleteSportButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:padding="4dp"
+            android:text="Eliminar Deporte Activo"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+            android:textColor="?attr/colorError"
+            android:visibility="gone"
+            tools:visibility="visible"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/activeSportTextView" />
+
         <!-- Notifications -->
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/notificationsSwitch"
@@ -92,7 +106,7 @@
             android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/activeSportTextView" />
+            app:layout_constraintTop_toBottomOf="@id/deleteSportButton" />
 
         <!-- Account Section -->
         <TextView
